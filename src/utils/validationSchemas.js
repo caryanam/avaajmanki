@@ -12,7 +12,7 @@ export const registerSchema = z.object({
     .email('Please enter a valid email address'),
   mobileNumber: z
     .string()
-    .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number starting with 6-9'),
+    .regex(/^(?:\+91|0091|91|0)?[\s\-]?[6-9]\d{9}$/, 'Must be a valid Indian mobile number starting with 6-9'),
   password: z
     .string()
     .min(8, 'Password must be at least 8 characters')
@@ -33,12 +33,20 @@ export const passwordSchema = z
   .regex(/[@$!%*?&#\-_.]/, 'Password must contain at least 1 special character (@, $, !, %, *, ?, &, #, -, _, .)');
 
 export const loginSchema = z.object({
+  identifier: z
+    .string()
+    .min(1, 'Email address or mobile number is required')
+    .optional(),
   email: z
     .string()
-    .min(1, 'Email address or mobile number is required'),
+    .min(1, 'Email address or mobile number is required')
+    .optional(),
   password: z
     .string()
     .min(1, 'Password is required'),
+}).refine((data) => Boolean((data.identifier && data.identifier.trim()) || (data.email && data.email.trim())), {
+  message: 'Email address or mobile number is required',
+  path: ['identifier'],
 });
 
 export const editProfileSchema = z.object({

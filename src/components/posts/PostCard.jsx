@@ -34,6 +34,7 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
   const [editTitle, setEditTitle] = useState(post.title || post.originalTitle || '');
   const [editContent, setEditContent] = useState(post.originalContent || post.content || '');
   const [editImageUrl, setEditImageUrl] = useState(post.imageUrl || '');
@@ -427,18 +428,22 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             postId={post.id}
             postAuthorUsername={post.username}
             onNavigate={onNavigate}
+            activeReplyCommentId={activeReplyCommentId}
+            onReplyStateChange={setActiveReplyCommentId}
           />
 
           {/* Comment Composer Input Box AT THE VERY BOTTOM */}
-          <CommentComposer
-            postId={post.id}
-            postAuthorUsername={post.username}
-            onSubmit={async (text) => {
-              await createComment(post.id, text, post.username);
-            }}
-            onNavigate={onNavigate}
-            placeholder="Write a comment..."
-          />
+          {!activeReplyCommentId && (
+            <CommentComposer
+              postId={post.id}
+              postAuthorUsername={post.username}
+              onSubmit={async (text) => {
+                await createComment(post.id, text, post.username);
+              }}
+              onNavigate={onNavigate}
+              placeholder="Write a comment..."
+            />
+          )}
 
         </div>
       )}

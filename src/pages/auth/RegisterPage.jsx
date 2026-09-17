@@ -86,10 +86,21 @@ export function RegisterPage({ onNavigate }) {
     e.preventDefault();
     setFieldErrors({});
 
-    // Validate mobile number: 10 digits
-    if (!/^[6-9]\d{9}$/.test(mobile.trim())) {
-      setFieldErrors(p => ({ ...p, mobile: 'Mobile number must be 10 digits starting with 6-9' }));
-      addToast('Invalid mobile number format (must start with 6-9)', 'error');
+    // Validate mobile number: support +91, 0, or 10 digits starting with 6-9
+    let cleanMobile = mobile.replace(/[\s\-()]/g, '').trim();
+    if (cleanMobile.startsWith('+91')) {
+      cleanMobile = cleanMobile.substring(3);
+    } else if (cleanMobile.startsWith('0091')) {
+      cleanMobile = cleanMobile.substring(4);
+    } else if (cleanMobile.startsWith('91') && cleanMobile.length === 12 && ['6','7','8','9'].includes(cleanMobile[2])) {
+      cleanMobile = cleanMobile.substring(2);
+    } else if (cleanMobile.startsWith('0') && cleanMobile.length === 11 && ['6','7','8','9'].includes(cleanMobile[1])) {
+      cleanMobile = cleanMobile.substring(1);
+    }
+
+    if (!/^[6-9]\d{9}$/.test(cleanMobile)) {
+      setFieldErrors(p => ({ ...p, mobile: 'Please enter a valid 10-digit Indian mobile number starting with 6-9' }));
+      addToast('Invalid mobile number format. Must be a valid Indian mobile number', 'error');
       return;
     }
 
@@ -111,7 +122,7 @@ export function RegisterPage({ onNavigate }) {
       // 1. Call POST /api/auth/register
       await register({
         fullName: fullName.trim(),
-        mobileNumber: mobile.trim(),
+        mobileNumber: cleanMobile,
         email: email.trim(),
         password,
       });
@@ -275,7 +286,7 @@ export function RegisterPage({ onNavigate }) {
                 type="tel"
                 value={mobile}
                 onChange={e => setMobile(e.target.value)}
-                placeholder="Enter mobile number"
+                placeholder="e.g. 9876543210 or +91..."
                 required
                 style={inp(false, !!fieldErrors.mobile)}
               />

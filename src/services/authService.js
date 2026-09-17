@@ -3,10 +3,15 @@ import { apiProfileService } from './apiProfileService.js';
 import { mockAuthService } from './mockAuthService.js';
 
 export const authService = {
-  // POST /api/auth/login { email, password } → returns user data plus token
-  async login(emailOrMobile, password, { allowMockFallback = true } = {}) {
+  // POST /api/auth/login { identifier, password } → returns user data plus token
+  async login(identifier, password, { allowMockFallback = true } = {}) {
     try {
-      const response = await apiClient.post('/api/auth/login', { email: emailOrMobile, password });
+      const cleanIdentifier = (identifier || '').trim();
+      const response = await apiClient.post('/api/auth/login', {
+        identifier: cleanIdentifier,
+        email: cleanIdentifier,
+        password,
+      });
       const res = response.data;
 
       if (res && res.success && res.data?.token) {

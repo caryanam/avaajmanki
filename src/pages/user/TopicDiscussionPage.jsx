@@ -11,10 +11,12 @@ import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
 import { CommentComposer } from '../../components/comments/CommentComposer.jsx';
 import { CommentCard } from '../../components/comments/CommentCard.jsx';
+import { useComments } from '../../context/CommentContext.jsx';
 
 export function TopicDiscussionPage({ topicId, onNavigate }) {
   const { addToast } = useToast();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
+  const { activeReplyCommentId } = useComments();
   const [topic, setTopic] = useState(null);
   const [translatedTopic, setTranslatedTopic] = useState('');
   const commentStreamRef = useRef(null);
@@ -105,9 +107,11 @@ export function TopicDiscussionPage({ topicId, onNavigate }) {
             <div key={comment.id} style={{ padding: '10px 0', borderBottom: '1px solid #EEE8E6' }}><CommentCard comment={normalizeComment(comment)} postId={null} onNavigate={onNavigate} onReplySubmit={submitReply} /></div>)}
           {!loading && comments.length === 0 && <div style={{ textAlign: 'center', color: '#8C8385', padding: 30 }}>{t('noOpinionsYet', 'No opinions yet. Start the discussion.')}</div>}
         </div>
-        <div style={{ padding: '10px 16px', borderTop: '1px solid #E5DFDE', background: '#fff', flexShrink: 0 }}>
-          <CommentComposer onSubmit={submit} enableImage placeholder={t('writeCommentPlaceholder', 'Write a comment...')} onNavigate={onNavigate} />
-        </div>
+        {!activeReplyCommentId && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid #E5DFDE', background: '#fff', flexShrink: 0 }}>
+            <CommentComposer onSubmit={submit} enableImage placeholder={t('writeCommentPlaceholder', 'Write a comment...')} onNavigate={onNavigate} />
+          </div>
+        )}
       </section>
     </div>
     </TopicBackgroundRotator>

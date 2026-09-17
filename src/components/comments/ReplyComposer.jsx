@@ -169,8 +169,29 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           }}
         />
 
-        {/* Right Icons: Mic (Press & Hold) + Send Arrow */}
+        {/* Right Icons: Cancel X + Mic (Press & Hold) + Send Arrow */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              title="Cancel reply"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '50%',
+                color: '#8C8385',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+
           <button
             type="button"
             {...bindMicProps}

@@ -9,7 +9,7 @@ export function LoginPage({ onNavigate }) {
   const { login } = useAuth();
   const { addToast } = useToast();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -20,7 +20,7 @@ export function LoginPage({ onNavigate }) {
     setErrors({});
 
     // Zod validation
-    const result = loginSchema.safeParse({ email: email.trim(), password });
+    const result = loginSchema.safeParse({ identifier: identifier.trim(), email: identifier.trim(), password });
     if (!result.success) {
       const errMap = {};
       result.error.errors.forEach((err) => {
@@ -32,7 +32,7 @@ export function LoginPage({ onNavigate }) {
 
     setSubmitting(true);
     try {
-      const res = await login(email.trim(), password);
+      const res = await login(identifier.trim(), password);
       if (res?.user?.role === 'ADMIN') {
         onNavigate('/admin/dashboard');
         return;
@@ -47,7 +47,7 @@ export function LoginPage({ onNavigate }) {
       console.error(err);
       if (err?.status === 404 || err?.message?.toLowerCase().includes('account not found') || err?.message?.toLowerCase().includes('not found')) {
         addToast('Account not found. Please check your email or mobile number.', 'error');
-        setErrors({ email: 'Account not found. No account is registered with this email or mobile number.' });
+        setErrors({ identifier: 'Account not found. No account is registered with this email or mobile number.' });
       } else if (err?.errors && typeof err.errors === 'object') {
         setErrors(err.errors);
       } else {
@@ -58,7 +58,7 @@ export function LoginPage({ onNavigate }) {
     }
   };
 
-  const isMobileInput = /^\d+$/.test(email.trim());
+  const isMobileInput = identifier.trim().length > 0 && /^(?:\+?\d|[\d\s\-])+$/.test(identifier.trim()) && !identifier.includes('@');
 
   return (
     <AuthLayout onNavigate={onNavigate}>
@@ -85,15 +85,15 @@ export function LoginPage({ onNavigate }) {
             </div>
             <input
               type="text"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: null })); }}
+              value={identifier}
+              onChange={(e) => { setIdentifier(e.target.value); setErrors((p) => ({ ...p, identifier: null, email: null })); }}
               placeholder="Enter registered mail or mobile"
               required
               style={{
                 width: '100%',
                 padding: '11px 12px 11px 38px',
                 borderRadius: '8px',
-                border: errors.email ? '2px solid var(--error)' : '1.5px solid var(--border-light)',
+                border: (errors.identifier || errors.email) ? '2px solid var(--error)' : '1.5px solid var(--border-light)',
                 fontSize: '14px',
                 color: 'var(--eclipse)',
                 outline: 'none',
@@ -101,9 +101,9 @@ export function LoginPage({ onNavigate }) {
               }}
             />
           </div>
-          {errors.email && (
+          {(errors.identifier || errors.email) && (
             <span style={{ fontSize: '12px', color: 'var(--error)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <AlertCircle size={13} /> {errors.email}
+              <AlertCircle size={13} /> {errors.identifier || errors.email}
             </span>
           )}
         </div>

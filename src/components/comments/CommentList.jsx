@@ -8,7 +8,7 @@ import { mapComment } from '../../services/apiMappers.js';
 import { EmptyState } from '../common/EmptyState.jsx';
 import { MessageSquare } from 'lucide-react';
 
-export function CommentList({ postId, postAuthorUsername, onNavigate }) {
+export function CommentList({ postId, postAuthorUsername, onNavigate, activeReplyCommentId, onReplyStateChange }) {
   const { commentsByPost, fetchComments } = useComments();
   const [sortBy, setSortBy] = useState('Latest');
   const commentsEndRef = useRef(null);
@@ -99,6 +99,12 @@ export function CommentList({ postId, postAuthorUsername, onNavigate }) {
               postId={postId}
               postAuthorUsername={postAuthorUsername}
               onNavigate={onNavigate}
+              isActiveReply={activeReplyCommentId === comment.id}
+              onReplyToggle={(isOpen) => {
+                if (onReplyStateChange) {
+                  onReplyStateChange(isOpen ? comment.id : null);
+                }
+              }}
             />
           ))}
           <div ref={commentsEndRef} />

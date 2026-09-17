@@ -4,6 +4,7 @@ import { Smile, AlertCircle, ImagePlus, Mic, MicOff, Loader2, X, Send } from 'lu
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { useComments } from '../../context/CommentContext.jsx';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { moderationCheck } from '../../utils/moderationCheck.js';
@@ -75,8 +76,13 @@ export function CommentComposer({
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { currentLanguage, t } = useLanguage();
+  const { activeReplyCommentId } = useComments();
   const [spokenLanguage] = useSpokenLanguage();
   const inputRef = React.useRef(null);
+
+  if (activeReplyCommentId) {
+    return null;
+  }
 
 
 

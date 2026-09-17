@@ -59,6 +59,18 @@ export function Footer({ onNavigate }) {
 
   return (
     <footer id="about" style={{ backgroundColor: '#0B0D1B', color: '#FFFFFF', paddingTop: '68px', paddingBottom: '32px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <style>{`
+        .footer-link {
+          color: #A0A5BD;
+          text-decoration: none;
+          font-size: 14px;
+          transition: color 0.2s ease;
+          cursor: pointer;
+        }
+        .footer-link:hover {
+          color: #F2B08D !important;
+        }
+      `}</style>
       <div className="section-container" style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 20px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '44px', paddingBottom: '52px' }}>
           
@@ -89,8 +101,15 @@ export function Footer({ onNavigate }) {
             <span onClick={() => handleQuickLinkScroll('why-man-ki-aawaj')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Features</span>
             <span onClick={() => handleQuickLinkScroll('features')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>How It Works</span>
             <span onClick={() => handleScrollTopNav('/about')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>About Us</span>
-
-
+            <a
+              href="https://github.com/caryanam/mann-ki-awaj-apk/releases/download/New/AawajManKi.apk?utm_source=chatgpt.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+              style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px', textDecoration: 'none' }}
+            >
+              Download Apk
+            </a>
           </div>
 
 

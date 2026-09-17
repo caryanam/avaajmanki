@@ -36,9 +36,9 @@ const emojiMap = {
   '😀': 'relate'
 };
 
-export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit }) {
+export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit, isActiveReply, onReplyToggle }) {
   const { currentUser } = useAuth();
-  const { updateComment, deleteComment, createReply, reactToComment } = useComments();
+  const { updateComment, deleteComment, createReply, reactToComment, activeReplyCommentId, setActiveReplyCommentId } = useComments();
   const { blockUser, blockedUsers = [], mutedUsers = [] } = useReports();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const { addToast } = useToast();
@@ -46,10 +46,26 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(comment.content);
   const [isHovered, setIsHovered] = useState(false);
-  const [showReplyComposer, setShowReplyComposer] = useState(false);
+  const [localShowReplyComposer, setLocalShowReplyComposer] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [manualToggle, setManualToggle] = useState(false);
+
+  const isThisCommentActiveReply = (activeReplyCommentId !== null && activeReplyCommentId !== undefined)
+    ? String(activeReplyCommentId) === String(comment.id)
+    : (isActiveReply !== undefined ? isActiveReply : localShowReplyComposer);
+
+  const showReplyComposer = isThisCommentActiveReply;
+
+  const toggleReplyComposer = (open) => {
+    if (setActiveReplyCommentId) {
+      setActiveReplyCommentId(open ? comment.id : null);
+    }
+    if (onReplyToggle) {
+      onReplyToggle(open);
+    }
+    setLocalShowReplyComposer(open);
+  };
 
   const isBlockedOrMuted = (() => {
     const author = (comment.username || '').toLowerCase().replace(/^@/, '').trim();
@@ -125,7 +141,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
   const handleAddReply = async (replyText) => {
     if (onReplySubmit) await onReplySubmit(comment.id, replyText);
     else await createReply(comment.id, postId, replyText, comment.username);
-    setShowReplyComposer(false);
+    toggleReplyComposer(false);
   };
 
   const rawDisplayContent = manualToggle
@@ -334,7 +350,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
 
           <button
             type="button"
-            onClick={() => setShowReplyComposer(!showReplyComposer)}
+            onClick={() => toggleReplyComposer(!showReplyComposer)}
             style={{
               background: 'none',
               border: 'none',
@@ -353,7 +369,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
           <div style={{ display: 'inline-flex', alignItems: 'center' }}>
             <CommentMenu
               isOwner={isOwner}
-              onReply={() => setShowReplyComposer(!showReplyComposer)}
+              onReply={() => toggleReplyComposer(!showReplyComposer)}
               onCopy={handleCopy}
               onEdit={() => setIsEditing(true)}
               onDelete={handleDelete}
@@ -371,11 +387,11 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
           commentId={comment.id}
           onNavigate={onNavigate}
           showReplyComposer={showReplyComposer}
-          onCancelReplyComposer={() => setShowReplyComposer(false)}
+          onCancelReplyComposer={() => toggleReplyComposer(false)}
           onSubmitReply={handleAddReply}
           targetUsername={comment.username}
           onReplyTrigger={(username) => {
-            setShowReplyComposer(true);
+            toggleReplyComposer(true);
           }}
         />
       </div>

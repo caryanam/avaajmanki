@@ -9,6 +9,7 @@ const CommentContext = createContext(null);
 
 export function CommentProvider({ children }) {
   const [commentsByPost, setCommentsByPost] = useState({});
+  const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -272,6 +273,8 @@ export function CommentProvider({ children }) {
       updateComment,
       deleteComment,
       reactToComment,
+      activeReplyCommentId,
+      setActiveReplyCommentId,
     }}>
       {children}
     </CommentContext.Provider>
