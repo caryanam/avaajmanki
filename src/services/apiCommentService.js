@@ -16,8 +16,20 @@ export const apiCommentService = {
 
   // GET /api/posts/{postId}/comments?page=0&size=20
   async getCommentsByPostId(postId, params = {}) {
-    // If local/mock post ID, return mock comments without triggering network 500 error
-    if (!postId || String(postId).startsWith('post_')) {
+    const strId = String(postId || '');
+    if (!postId || strId.startsWith('post_') || strId.startsWith('TOPIC_OPINION_') || isNaN(Number(postId))) {
+      if (strId.startsWith('TOPIC_OPINION_') || isNaN(Number(postId))) {
+        return {
+          success: true,
+          data: {
+            content: [],
+            totalElements: 0,
+            totalPages: 0,
+            number: 0,
+            size: params.size || 20,
+          },
+        };
+      }
       const mockComments = mockCommentService.getCommentsByPostId(postId);
       return {
         success: true,

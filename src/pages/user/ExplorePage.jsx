@@ -93,18 +93,24 @@ export function ExplorePage({ onNavigate }) {
         blockedUsers.some((b) => (b || '').toLowerCase().replace(/^@/, '').trim() === authorHandle) ||
         mutedUsers.some((m) => (m || '').toLowerCase().replace(/^@/, '').trim() === authorHandle)
       );
-    return p.status === 'PUBLISHED' && !isBlockedOrMuted;
+    const isActive = p.status === 'ACTIVE' || p.status === 'PUBLISHED' || !p.status;
+    return isActive && p.status !== 'DELETED' && p.status !== 'HIDDEN' && !isBlockedOrMuted;
   });
 
   if (query.trim()) {
     const qLower = query.toLowerCase();
     displayPosts = displayPosts.filter(
-      (p) => p.title?.toLowerCase().includes(qLower) || p.content.toLowerCase().includes(qLower) || p.topic.toLowerCase().includes(qLower)
+      (p) => p.title?.toLowerCase().includes(qLower) || p.content?.toLowerCase().includes(qLower) || (p.topic && p.topic.toLowerCase().includes(qLower)) || (p.subtopic && p.subtopic.toLowerCase().includes(qLower))
     );
   }
 
   if (activeTopic !== 'All') {
-    displayPosts = displayPosts.filter((p) => (p.topic || '').toUpperCase() === activeTopic.toUpperCase());
+    const target = activeTopic.toUpperCase();
+    displayPosts = displayPosts.filter((p) => {
+      const pTopic = (p.topic || '').toUpperCase();
+      const pSubtopic = (p.subtopic || '').toUpperCase();
+      return pTopic === target || pSubtopic === target;
+    });
   }
 
   // Filter topic cards by search query
@@ -173,9 +179,6 @@ export function ExplorePage({ onNavigate }) {
               />
             </div>
           </div>
-
-
-
 
           {/* ── SEARCH RESULTS & POST LISTINGS ── */}
           <div id="explore-posts-section" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', scrollMarginTop: '90px', marginTop: '12px' }}>

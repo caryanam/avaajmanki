@@ -17,6 +17,9 @@ export function CommentProvider({ children }) {
   const fetchComments = useCallback(async (postId) => {
     if (!postId) return [];
     const pStr = String(postId);
+    if (pStr.startsWith('TOPIC_OPINION_') || isNaN(Number(postId))) {
+      return [];
+    }
     const pNum = Number(postId);
     activePostIdsRef.current.add(pStr);
     try {

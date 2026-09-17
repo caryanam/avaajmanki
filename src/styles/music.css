@@ -190,10 +190,11 @@
 
 .community-music-layout {
   display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
   gap: 20px;
   align-items: start;
   min-width: 0;
+  width: 100%;
 }
 
 .music-view-community .music-page-header {
@@ -209,7 +210,7 @@
 .music-view-community .music-page-tabs { background: rgba(255,255,255,.72); padding: 6px; border-radius: 999px; }
 .music-view-community .music-page-tabs button { min-height: 38px; padding: 8px 16px; }
 
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .community-music-layout {
     grid-template-columns: 1fr;
   }
@@ -376,12 +377,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .composer-actions-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .composer-tool-btn {
@@ -396,6 +399,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 
@@ -416,6 +420,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(111, 64, 95, 0.25);
   transition: transform 0.15s, background 0.2s;
 }
@@ -428,6 +434,21 @@
 .composer-submit-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .composer-actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .composer-actions-left {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .composer-submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* --- WAVEFORM PLAYER --- */

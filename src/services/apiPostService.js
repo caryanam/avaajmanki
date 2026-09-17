@@ -35,6 +35,9 @@ export const apiPostService = {
       if (params.topic && params.topic !== 'ALL' && params.topic !== 'All') {
         queryParams.topic = params.topic;
       }
+      if (params.community) {
+        queryParams.community = params.community;
+      }
 
       const response = await apiClient.get('/api/posts', { params: queryParams, timeout: 30000 });
 

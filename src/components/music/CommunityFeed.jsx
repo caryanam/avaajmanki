@@ -185,19 +185,23 @@ export function CommunityFeed({ posts = [], isLoading, isError, onRefetch, curre
     );
   }
 
-  if (!posts || posts.length === 0) {
+  const audioPosts = (posts || []).filter(
+    (p) => Boolean(p && (p.audioUrl || p.audio?.audioUrl || p.musicTrackId || p.type === 'VOICE_NOTE' || p.postType === 'VOICE_NOTE' || p.type === 'MUSIC'))
+  );
+
+  if (!audioPosts || audioPosts.length === 0) {
     return (
       <div className="community-feed-empty">
         <Music size={40} opacity={0.4} />
-        <h3>No community posts yet</h3>
-        <p>Be the first to record a voice note or share your music thoughts above!</p>
+        <h3>No voice notes or music shared yet</h3>
+        <p>Be the first to record a voice note or share a song with the community!</p>
       </div>
     );
   }
 
   return (
     <div className="community-feed-list">
-      {posts.map((post) => (
+      {audioPosts.map((post) => (
         <FeedPostCard
           key={post.id}
           post={post}

@@ -6,6 +6,7 @@ import { apiMusicService } from '../../services/apiMusicService.js';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import defaultCover from '../../assets/music-cover.jpg';
 import { getMusicMoodLabel } from '../../config/musicMoods.js';
+import { mapPost } from '../../services/apiMappers.js';
 
 export function CommunityLibraryPanel() {
   const music = useMoodMusic();
@@ -25,7 +26,10 @@ export function CommunityLibraryPanel() {
     }),
   });
 
-  const savedPosts = savedPostsQuery.data?.data?.content || savedPostsQuery.data?.content || [];
+  const rawSavedPosts = savedPostsQuery.data?.data?.content || savedPostsQuery.data?.content || [];
+  const savedPosts = rawSavedPosts
+    .map(mapPost)
+    .filter((post) => Boolean(post && (post.audioUrl || post.audio?.audioUrl || post.musicTrackId || post.type === 'VOICE_NOTE')));
   const catalogTracks = catalogTracksQuery.data?.content || [];
 
   const handlePlaySavedAudio = (post) => {

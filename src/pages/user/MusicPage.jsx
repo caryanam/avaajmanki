@@ -15,6 +15,7 @@ import { CommunityComposer } from '../../components/music/CommunityComposer.jsx'
 import { CommunityFeed } from '../../components/music/CommunityFeed.jsx';
 import { NowPlayingPanel } from '../../components/music/NowPlayingPanel.jsx';
 import { CommunityLibraryPanel } from '../../components/music/CommunityLibraryPanel.jsx';
+import { mapPost } from '../../services/apiMappers.js';
 
 const LANGUAGES = ['EN', 'HI', 'BN', 'MR', 'TE', 'TA', 'GU', 'UR', 'KN', 'OR', 'ML', 'PA', 'AS', 'SAT', 'KS', 'MNI', 'DOI', 'BHO'];
 
@@ -96,10 +97,10 @@ export function MusicPage({ onNavigate }) {
   const featuredParams = music.selectedMood ? { featured: true, mood: music.selectedMood, page: 0, size: 8 } : { featured: true, page: 0, size: 8 };
   const featuredQuery = useQuery({ queryKey: ['featured-music', music.selectedMood], queryFn: () => apiMusicService.getPublicTracks(featuredParams), enabled: canLoad && view === 'browse' });
 
-  // Community Feed Query
+  // Community Feed Query (strictly music & voice notes)
   const communityPostsQuery = useQuery({
     queryKey: ['community-posts-feed'],
-    queryFn: () => apiPostService.getPosts({ page: 0, size: 30 }),
+    queryFn: () => apiPostService.getPosts({ page: 0, size: 50, community: 'MUSIC' }),
     enabled: canLoad && view === 'community',
   });
 
@@ -125,7 +126,18 @@ export function MusicPage({ onNavigate }) {
   const activeQuery = shouldFallback ? fallbackQuery : tracksQuery;
   const tracks = activeQuery.data?.content || [];
   const featured = featuredQuery.data?.content || [];
-  const communityPosts = communityPostsQuery.data?.data?.content || communityPostsQuery.data?.content || [];
+  const rawCommunityPosts = communityPostsQuery.data?.data?.content || communityPostsQuery.data?.content || [];
+  const communityPosts = useMemo(() => {
+    return rawCommunityPosts
+      .map(mapPost)
+      .filter((post) => {
+        if (!post) return false;
+        const hasAudio = Boolean(post.audioUrl || post.audio?.audioUrl);
+        const hasTrack = Boolean(post.musicTrackId);
+        const isVoiceType = post.type === 'VOICE_NOTE' || post.postType === 'VOICE_NOTE' || post.type === 'MUSIC';
+        return hasAudio || hasTrack || isVoiceType;
+      });
+  }, [rawCommunityPosts]);
   const hasFilters = Boolean(debouncedQuery || language || genre.trim());
 
   const chooseMood = (option) => {

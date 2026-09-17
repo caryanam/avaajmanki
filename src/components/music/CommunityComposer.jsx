@@ -116,41 +116,35 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
   // Submit Post or Voice Note
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!content.trim() && !voiceBlob) return;
+    if (!voiceBlob) {
+      setErrorMessage('Music community accepts voice notes and songs only. Please record a voice note or use Upload Song.');
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
     try {
-      if (voiceBlob) {
-        // Publish Voice Note Post
-        const formData = new FormData();
-        const file = new File([voiceBlob], 'recording.wav', { type: 'audio/wav' });
-        formData.append('file', file);
-        if (title.trim()) formData.append('title', title.trim());
-        if (content.trim()) formData.append('topic', 'GENERAL');
-        formData.append('mood', 'NEUTRAL');
+      // Publish Voice Note Post
+      const formData = new FormData();
+      const file = new File([voiceBlob], 'recording.wav', { type: 'audio/wav' });
+      formData.append('file', file);
+      if (title.trim()) formData.append('title', title.trim());
+      if (content.trim()) formData.append('caption', content.trim());
+      formData.append('topic', 'MUSIC');
+      formData.append('mood', 'NEUTRAL');
+      formData.append('isMusicCommunity', 'true');
 
-        await apiPostService.publishVoiceNote(formData);
-        setSuccessMessage('Voice note published successfully!');
-      } else {
-        // Publish Text Post
-        await apiPostService.createPost({
-          content: content.trim(),
-          title: title.trim() || undefined,
-          topic: 'GENERAL',
-          postType: 'TEXT',
-        });
-        setSuccessMessage('Post published successfully!');
-      }
+      await apiPostService.publishVoiceNote(formData);
+      setSuccessMessage('Voice note published successfully!');
 
       setContent('');
       setTitle('');
       discardRecording();
       if (onPostPublished) onPostPublished();
     } catch (err) {
-      const message = err?.message || err?.userMessage || 'Failed to publish. Content moderation error or network failure.';
+      const message = err?.message || err?.userMessage || 'Failed to publish voice note. Please try again.';
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -171,7 +165,7 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
             rows={2}
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Share a song or a voice note with the community..."
+            placeholder="Record a voice note or add a caption for your music..."
             disabled={isSubmitting}
           />
         </div>
@@ -188,15 +182,12 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
         )}
 
         {/* Recorded Voice Preview */}
-        {voiceBlob && voiceUrl && !isRecording && (
+        {voiceBlob && (
           <div className="composer-voice-preview">
-            <div className="composer-voice-header">
-              <span className="preview-label">Voice Note Preview ({recordSeconds}s)</span>
-              <button className="composer-discard-btn" type="button" onClick={discardRecording}>
-                <Trash2 size={15} /> Remove
-              </button>
-            </div>
-            <WaveformPlayer audioUrl={voiceUrl} durationSeconds={recordSeconds} title="Voice Note Preview" />
+            <WaveformPlayer audioUrl={voiceUrl} durationSeconds={recordSeconds} title={title || 'Voice Note Preview'} />
+            <button className="composer-discard-btn" type="button" onClick={discardRecording} title="Discard recording">
+              <Trash2 size={16} />
+            </button>
           </div>
         )}
 
@@ -217,13 +208,13 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
           <div className="composer-actions-left">
             {!isRecording && !voiceBlob && (
               <button
-                className="composer-tool-btn"
+                className="composer-tool-btn active-tool"
                 type="button"
                 onClick={startRecording}
                 disabled={isSubmitting}
                 title="Record voice note"
               >
-                <Mic size={18} /> Record Voice
+                <Mic size={18} /> Record Voice Note
               </button>
             )}
 
@@ -241,7 +232,7 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
           <button
             className="composer-submit-btn"
             type="submit"
-            disabled={isSubmitting || isRecording || (!content.trim() && !voiceBlob)}
+            disabled={isSubmitting || isRecording || !voiceBlob}
           >
             {isSubmitting ? (
               <>
@@ -249,7 +240,7 @@ export function CommunityComposer({ onPostPublished, onOpenSongUpload }) {
               </>
             ) : (
               <>
-                <Send size={16} /> Post
+                <Send size={16} /> Publish Voice Note
               </>
             )}
           </button>

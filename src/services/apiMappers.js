@@ -106,11 +106,22 @@ export function mapPost(post) {
   const finalTopic = (detectedSubtopic || post.topic || 'GENERAL').toUpperCase();
 
   let audioObj = post.audio || post.audioAttachment || null;
+  const resolvedAudioUrl = post.audioUrl ? getMediaUrl(post.audioUrl) : (audioObj?.audioUrl ? getMediaUrl(audioObj.audioUrl) : null);
+  const resolvedCoverUrl = post.imageUrl ? getMediaUrl(post.imageUrl) : (audioObj?.coverUrl ? getMediaUrl(audioObj.coverUrl) : null);
+
   if (audioObj) {
     audioObj = {
       ...audioObj,
-      audioUrl: audioObj.audioUrl ? getMediaUrl(audioObj.audioUrl) : null,
-      coverUrl: audioObj.coverUrl ? getMediaUrl(audioObj.coverUrl) : null,
+      audioUrl: resolvedAudioUrl,
+      coverUrl: resolvedCoverUrl,
+    };
+  } else if (resolvedAudioUrl) {
+    audioObj = {
+      audioUrl: resolvedAudioUrl,
+      title: post.title || 'Voice Note',
+      artistName: formattedUname,
+      durationSeconds: post.durationSeconds || 0,
+      coverUrl: resolvedCoverUrl,
     };
   }
 
@@ -133,7 +144,9 @@ export function mapPost(post) {
     reactions: reactionsMap,
     userReaction: post.userReaction || null,
     audio: audioObj,
-    status: post.status || 'PUBLISHED',
+    audioUrl: resolvedAudioUrl,
+    imageUrl: resolvedCoverUrl,
+    status: post.status || 'ACTIVE',
     createdAt: post.createdAt || new Date().toISOString(),
   };
 
