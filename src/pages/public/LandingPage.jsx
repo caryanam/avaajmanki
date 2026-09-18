@@ -1123,7 +1123,7 @@ export function LandingPage({ onNavigate }) {
               {/* Play Store Download Button */}
               <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '12px' }}>
                 <a
-                  href="https://github.com/caryanam/mann-ki-awaj-apk/releases/download/New/AawajManKi.apk?utm_source=chatgpt.com"
+                  href="https://github.com/caryanam/mann-ki-awaj-apk/releases/download/New/AwaajManki.apk"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{

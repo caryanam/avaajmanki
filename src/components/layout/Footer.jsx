@@ -102,7 +102,7 @@ export function Footer({ onNavigate }) {
             <span onClick={() => handleQuickLinkScroll('features')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>How It Works</span>
             <span onClick={() => handleScrollTopNav('/about')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>About Us</span>
             <a
-              href="https://github.com/caryanam/mann-ki-awaj-apk/releases/download/New/AawajManKi.apk?utm_source=chatgpt.com"
+              href="https://github.com/caryanam/mann-ki-awaj-apk/releases/download/New/AwaajManki.apk"
               target="_blank"
               rel="noopener noreferrer"
               className="footer-link"
