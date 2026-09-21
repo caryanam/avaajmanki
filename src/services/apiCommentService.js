@@ -53,17 +53,7 @@ export const apiCommentService = {
       });
       return response.data;
     } catch (err) {
-      const mockComments = mockCommentService.getCommentsByPostId(postId);
-      return {
-        success: true,
-        data: {
-          content: mockComments,
-          totalElements: mockComments.length,
-          totalPages: 1,
-          number: 0,
-          size: mockComments.length,
-        },
-      };
+      throw err;
     }
   },
 
@@ -129,13 +119,8 @@ export const apiCommentService = {
       return { success: true };
     }
 
-    try {
-      const response = await apiClient.delete(`/api/comments/${commentId}`);
-      return response.data;
-    } catch (err) {
-      mockCommentService.deleteComment(commentId);
-      return { success: true };
-    }
+    const response = await apiClient.delete(`/api/comments/${commentId}`);
+    return response.data;
   },
 
   // POST /api/comments/{commentId}/like

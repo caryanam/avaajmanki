@@ -28,11 +28,19 @@ export function NotificationProvider({ children }) {
 
   const seenNotifIdsRef = React.useRef(new Set());
   const isInitialLoadRef = React.useRef(true);
+  const socketConnectedRef = React.useRef(false);
+  const requestRef = React.useRef(null);
+  const userIdRef = React.useRef(currentUser?.id);
+  userIdRef.current = currentUser?.id;
 
   const refreshNotifications = useCallback(async () => {
     if (!currentUser) { setNotifications([]); return; }
+    if (requestRef.current === currentUser.id) return;
+    const requestUserId = currentUser.id;
+    requestRef.current = requestUserId;
     try {
       const response = await apiNotificationService.getNotifications();
+      if (userIdRef.current !== requestUserId) return;
       const fetched = (response.data?.content || []).map(mapNotification);
 
       // EXCLUDE chat messages/requests from the Bell Icon section
@@ -78,19 +86,32 @@ export function NotificationProvider({ children }) {
 
       setNotifications(postAndSystemNotifs);
     } catch (err) {
-      setNotifications([]);
+      // Preserve the last successful result during a temporary outage.
+    } finally {
+      if (requestRef.current === requestUserId) requestRef.current = null;
     }
   }, [currentUser, addToast]);
 
 
-  // 4-Second Auto-Refresh Timer
+  // Socket events keep the list fresh; polling is only a visible-tab fallback.
   useEffect(() => {
+    seenNotifIdsRef.current.clear();
+    isInitialLoadRef.current = true;
+    setNotifications([]);
     refreshNotifications();
+    if (!currentUser) return;
     const timer = setInterval(() => {
-      refreshNotifications();
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [refreshNotifications]);
+      if (!socketConnectedRef.current && document.visibilityState === 'visible') refreshNotifications();
+    }, 30000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshNotifications();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refreshNotifications, currentUser]);
 
   // Real-time Socket.IO notification listener
   useEffect(() => {
@@ -109,8 +130,11 @@ export function NotificationProvider({ children }) {
     });
 
     socket.on('connect', () => {
+      socketConnectedRef.current = true;
       socket.emit('join_user_room', String(currentUser.id));
+      refreshNotifications();
     });
+    socket.on('disconnect', () => { socketConnectedRef.current = false; });
 
     socket.on('new_notification', (newNotif) => {
       const type = (newNotif?.type || '').toUpperCase();
@@ -118,6 +142,9 @@ export function NotificationProvider({ children }) {
       // Skip chat messages from Bell notification processing
       if (type.includes('CHAT') || type.includes('MESSAGE')) return;
 
+      const notificationId = newNotif?.id != null ? String(newNotif.id) : null;
+      if (notificationId && seenNotifIdsRef.current.has(notificationId)) return;
+      if (notificationId) seenNotifIdsRef.current.add(notificationId);
       refreshNotifications();
       const prefs = getUserNotifPrefs();
 
@@ -160,6 +187,7 @@ export function NotificationProvider({ children }) {
     });
 
     return () => {
+      socketConnectedRef.current = false;
       socket.disconnect();
     };
   }, [currentUser, refreshNotifications, addToast, getUserNotifPrefs]);

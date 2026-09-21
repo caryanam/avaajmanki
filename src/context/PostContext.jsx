@@ -5,6 +5,7 @@ import { mapPost } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
 import { useLanguage, normalizeLanguage } from './LanguageContext.jsx';
 import { useToast } from './ToastContext.jsx';
+import { mergeFeed } from '../utils/feedCache.js';
 
 const PostContext = createContext(null);
 
@@ -24,7 +25,7 @@ export function PostProvider({ children }) {
     isFetching,
     refetch: refreshPosts,
   } = useQuery({
-    queryKey: ['posts', normLang],
+    queryKey: ['posts', normLang, currentUser?.id || 'guest'],
     queryFn: async ({ queryKey }) => {
       const previousCachedPosts = queryClient.getQueryData(queryKey) || [];
 
@@ -35,26 +36,10 @@ export function PostProvider({ children }) {
         if (Array.isArray(rawContent) && rawContent.length > 0) {
           const freshPosts = rawContent.map(mapPost);
 
-          // Seamless merge: keep existing feed on screen, update modified items & prepend new ones
-          if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
-            const freshMap = new Map(freshPosts.map((p) => [String(p.id), p]));
-            const merged = [...freshPosts];
-            for (const oldP of previousCachedPosts) {
-              if (!freshMap.has(String(oldP.id))) {
-                merged.push(oldP);
-              }
-            }
-            return merged;
-          }
-          return freshPosts;
+          return mergeFeed(freshPosts, previousCachedPosts);
         }
 
-        // If response is empty, preserve previous cached posts so screen never clears!
-        if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
-          return previousCachedPosts;
-        }
-
-        return Array.isArray(rawContent) ? rawContent.map(mapPost) : [];
+        return Array.isArray(rawContent) ? mergeFeed(rawContent.map(mapPost), previousCachedPosts) : previousCachedPosts;
       } catch (err) {
         console.error('[PostContext] Feed query error, preserving previous feed:', err);
         if (Array.isArray(previousCachedPosts) && previousCachedPosts.length > 0) {
@@ -65,7 +50,8 @@ export function PostProvider({ children }) {
     },
     placeholderData: keepPreviousData,
     staleTime: 10000,
-    refetchInterval: 15000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
     retry: 2,
   });
 

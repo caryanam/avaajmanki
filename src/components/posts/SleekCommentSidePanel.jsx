@@ -22,7 +22,7 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
   if (!post) return null;
 
   const postComments = commentsByPost[post.id] || [];
-  const matchedCommentCount = postComments.length > 0 ? postComments.length : (post.commentCount || 0);
+  const matchedCommentCount = commentsByPost[post.id] !== undefined ? postComments.length : (post.commentCount || 0);
   const displayTitle = post.originalTitle || post.title || 'Discussion';
 
   // Desktop side panel content & mobile slide-up sheet

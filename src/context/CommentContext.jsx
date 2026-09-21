@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { apiCommentService } from '../services/apiCommentService.js';
 import { mapComment } from '../services/apiMappers.js';
 import { useAuth } from './AuthContext.jsx';
@@ -12,8 +11,6 @@ export function CommentProvider({ children }) {
   const [activeReplyCommentId, setActiveReplyCommentId] = useState(null);
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const queryClient = useQueryClient();
-  const activePostIdsRef = React.useRef(new Set());
 
   const fetchComments = useCallback(async (postId) => {
     if (!postId) return [];
@@ -22,18 +19,13 @@ export function CommentProvider({ children }) {
       return [];
     }
     const pNum = Number(postId);
-    activePostIdsRef.current.add(pStr);
     try {
       const response = await apiCommentService.getCommentsByPostId(postId);
       const raw = response.data?.content || response.data || [];
       const data = Array.isArray(raw) ? raw.map(mapComment) : [];
       
       setCommentsByPost((prev) => {
-        const currentList = prev[pStr] || prev[pNum] || [];
-        // Prevent flashing blank if backend transiently returns empty on populated post
-        if (data.length === 0 && currentList.length > 0) {
-          return prev;
-        }
+        if (JSON.stringify(prev[pStr]) === JSON.stringify(data)) return prev;
         return { ...prev, [pStr]: data, [pNum]: data };
       });
       return data;
@@ -43,37 +35,7 @@ export function CommentProvider({ children }) {
     }
   }, []);
 
-  // Automatic real-time background sync via TanStack Query standards (3-second interval)
-  React.useEffect(() => {
-    const interval = setInterval(async () => {
-      const activeIds = Array.from(activePostIdsRef.current);
-      if (activeIds.length === 0) return;
-
-      for (const pId of activeIds) {
-        try {
-          const response = await apiCommentService.getCommentsByPostId(pId);
-          const raw = response.data?.content || response.data || [];
-          const freshComments = Array.isArray(raw) ? raw.map(mapComment) : [];
-
-          setCommentsByPost((prev) => {
-            const currentList = prev[pId] || prev[Number(pId)] || [];
-            if (freshComments.length === 0 && currentList.length > 0) {
-              return prev;
-            }
-            // Only update state if comments or replies have changed
-            if (JSON.stringify(currentList) !== JSON.stringify(freshComments)) {
-              return { ...prev, [pId]: freshComments, [Number(pId)]: freshComments };
-            }
-            return prev;
-          });
-        } catch (err) {
-          // Keep current state on error
-        }
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // CommentList owns polling only while a discussion is mounted and visible.
 
 
   const createComment = async (postId, content, postAuthorUsername) => {
@@ -248,8 +210,15 @@ export function CommentProvider({ children }) {
   const deleteComment = async (commentId, postId) => {
     try {
       await apiCommentService.deleteComment(commentId);
+      setCommentsByPost((prev) => {
+        const removeDeleted = (comments) => comments
+          .filter((comment) => String(comment.id) !== String(commentId))
+          .map((comment) => ({ ...comment, replies: removeDeleted(comment.replies || []) }));
+        return { ...prev, [postId]: removeDeleted(prev[postId] || []) };
+      });
     } catch (e) {
-      console.warn('[CommentContext] Delete comment notice:', e);
+      addToast(e?.response?.data?.message || e?.response?.data?.error || e?.message || 'Failed to delete comment.', 'error');
+      throw e;
     }
     await fetchComments(postId);
     addToast('Comment deleted from database.', 'info');

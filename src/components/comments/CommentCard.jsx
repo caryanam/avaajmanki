@@ -91,8 +91,7 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
       const res = await translateTextAsync(sourceText, currentLanguage);
       return res || null;
     },
-    refetchInterval: 3000,
-    staleTime: 10000,
+    staleTime: Infinity,
     enabled: Boolean(sourceText && currentLanguage),
   });
 
@@ -129,8 +128,12 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     }
   };
 
-  const handleDelete = () => {
-    deleteComment(comment.id, postId);
+  const handleDelete = async () => {
+    try {
+      await deleteComment(comment.id, postId);
+    } catch {
+      // CommentContext displays the API error and keeps the comment visible.
+    }
   };
 
   const handleCopy = () => {

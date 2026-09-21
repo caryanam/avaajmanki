@@ -34,7 +34,7 @@ const emojiMap = {
 
 export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger }) {
   const { currentUser } = useAuth();
-  const { updateReply, deleteReply, reactToReply } = useComments();
+  const { updateComment: updateReply, deleteComment: deleteReply, reactToReply } = useComments();
   const { blockUser } = useReports();
   const { addToast } = useToast();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
@@ -54,8 +54,7 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
       const res = await translateTextAsync(replySourceText, currentLanguage);
       return res || null;
     },
-    refetchInterval: 3000,
-    staleTime: 10000,
+    staleTime: Infinity,
     enabled: Boolean(replySourceText && currentLanguage),
   });
 
@@ -104,19 +103,23 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
     return list;
   });
 
-  const handleUpdate = (e) => {
+  const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editText.trim()) return;
     try {
-      updateReply(reply.id, postId, editText.trim());
+      await updateReply(reply.id, postId, editText.trim());
       setIsEditing(false);
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleDelete = () => {
-    deleteReply(reply.id, postId);
+  const handleDelete = async () => {
+    try {
+      await deleteReply(reply.id, postId);
+    } catch {
+      // CommentContext displays the API error and keeps the reply visible.
+    }
   };
 
   const handleCopy = () => {

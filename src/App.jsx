@@ -35,7 +35,9 @@ export default function App() {
                   <NotificationProvider>
                     <ReportProvider>
                       <ChatProvider>
-                        <AppRoutes />
+                        <React.Suspense fallback={<div role="status" style={{ padding: '32px', textAlign: 'center' }}>Loading…</div>}>
+                          <AppRoutes />
+                        </React.Suspense>
                         <ToastContainer />
                         <GlobalTranslationOverlay />
                       </ChatProvider>

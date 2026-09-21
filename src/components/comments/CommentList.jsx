@@ -14,15 +14,16 @@ export function CommentList({ postId, postAuthorUsername, onNavigate, activeRepl
   const commentsEndRef = useRef(null);
   const containerRef = useRef(null);
 
-  // TanStack Query for Post Comments with 3-second refetchInterval
+  // One shared query per post; hidden tabs and closed discussions do not poll.
   const commentsQuery = useQuery({
-    queryKey: ['post-comments', postId, sortBy],
+    queryKey: ['post-comments', String(postId)],
     queryFn: async () => {
       const data = await fetchComments(postId, sortBy);
       return data || [];
     },
-    refetchInterval: 3000,
-    staleTime: 1000,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+    staleTime: 10000,
     enabled: Boolean(postId),
   });
 
@@ -55,7 +56,6 @@ export function CommentList({ postId, postAuthorUsername, onNavigate, activeRepl
             currentSort={sortBy}
             onSortChange={(newSort) => {
               setSortBy(newSort);
-              fetchComments(postId, newSort);
             }}
           />
         </div>
