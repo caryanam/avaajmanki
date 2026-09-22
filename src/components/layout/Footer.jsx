@@ -119,6 +119,7 @@ export function Footer({ onNavigate }) {
             <span onClick={() => handleScrollTopNav('/faq')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>FAQs</span>
             <span onClick={() => handleScrollTopNav('/privacy-policy')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Privacy Policy</span>
             <span onClick={() => handleScrollTopNav('/community-guidelines')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Community Guidelines</span>
+            <span onClick={() => handleScrollTopNav('/child-safety')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Child Safety Standards</span>
             <span onClick={() => handleScrollTopNav('/delete-account')} className="footer-link" style={{ color: '#A0A5BD', cursor: 'pointer', fontSize: '14px' }}>Delete User Account</span>
           </div>
 

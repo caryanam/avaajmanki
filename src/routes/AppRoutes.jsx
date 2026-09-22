@@ -9,6 +9,7 @@ const CommunityGuidelinesPage = React.lazy(() => import('../pages/public/Communi
 const ContactPage = React.lazy(() => import('../pages/public/ContactPage.jsx').then(module => ({ default: module.ContactPage })));
 const FaqPage = React.lazy(() => import('../pages/public/FaqPage.jsx').then(module => ({ default: module.FaqPage })));
 const DeleteAccountPage = React.lazy(() => import('../pages/public/DeleteAccountPage.jsx').then(module => ({ default: module.DeleteAccountPage })));
+const ChildSafetyPage = React.lazy(() => import('../pages/public/ChildSafetyPage.jsx').then(module => ({ default: module.ChildSafetyPage })));
 
 const LoginPage = React.lazy(() => import('../pages/auth/LoginPage.jsx').then(module => ({ default: module.LoginPage })));
 const RegisterPage = React.lazy(() => import('../pages/auth/RegisterPage.jsx').then(module => ({ default: module.RegisterPage })));
@@ -107,6 +108,9 @@ export function AppRoutes() {
   }
   if (normalizedPath === '/delete-account') {
     return <DeleteAccountPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/child-safety' || normalizedPath === '/child-safety-standards') {
+    return <ChildSafetyPage onNavigate={navigate} />;
   }
 
   // 3. Auth Routes: /login, /register, /forgot-password, /onboarding, /setup-profile

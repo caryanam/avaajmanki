@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      const publicPaths = ['/', '', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/contact', '/login', '/admin/login', '/register', '/forgot-password'];
+      const publicPaths = ['/', '', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/child-safety', '/child-safety-standards', '/contact', '/faq', '/delete-account', '/login', '/admin/login', '/register', '/forgot-password'];
       const currentPath = window.location.pathname.split('?')[0].replace(/\/+$/, '') || '/';
       
       // Do not clear tokens or force redirect if user is actively on public pages like /login
