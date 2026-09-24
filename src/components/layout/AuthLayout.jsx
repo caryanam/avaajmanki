@@ -46,7 +46,7 @@ export function AuthLayout({ children, onNavigate }) {
         >
           <img
             src={logoMKA}
-            alt="Aawaj Man Ki Logo"
+            alt="AwajManki Logo"
             style={{
               width: '36px',
               height: '36px',
@@ -64,7 +64,7 @@ export function AuthLayout({ children, onNavigate }) {
               letterSpacing: '-0.01em',
             }}
           >
-            Aawaj Man Ki
+            AwajManki
           </span>
         </button>
 

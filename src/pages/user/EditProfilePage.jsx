@@ -70,6 +70,7 @@ export function EditProfilePage({ onNavigate }) {
       onNavigate(`/profile/${currentUsername.replace('@', '')}`);
     } catch (err) {
       console.error('Error saving profile settings:', err);
+      addToast(err?.response?.data?.message || err?.message || 'Failed to save profile settings.', 'error');
     } finally {
       setSubmitting(false);
     }

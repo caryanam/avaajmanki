@@ -144,12 +144,8 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (updates) => {
     if (!currentUser) return;
-    try {
-      if (apiProfileService && apiProfileService.updateProfile) {
-        await apiProfileService.updateProfile(updates);
-      }
-    } catch (e) {
-      console.warn('API update profile warning:', e);
+    if (apiProfileService && apiProfileService.updateProfile) {
+      await apiProfileService.updateProfile(updates);
     }
     const cleanUsername = updates.username
       ? (updates.username.startsWith('@') ? updates.username : `@${updates.username}`)

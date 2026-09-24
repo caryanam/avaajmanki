@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -9,7 +9,7 @@ import { PostCard } from '../../components/posts/PostCard.jsx';
 import { Button } from '../../components/common/Button.jsx';
 import { Modal } from '../../components/common/Modal.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon, EyeOff, Eye } from 'lucide-react';
+import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon, EyeOff, Eye, XCircle } from 'lucide-react';
 import { apiClient } from '../../services/apiClient.js';
 
 import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
@@ -72,6 +72,10 @@ export function ProfilePage({ username, onNavigate }) {
   const [editAvatarConfig, setEditAvatarConfig] = useState(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editErrors, setEditErrors] = useState({});
+  const [editAvailabilityStatus, setEditAvailabilityStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'
+  const [editAvailabilityMessage, setEditAvailabilityMessage] = useState('');
+  const [editServerSuggestions, setEditServerSuggestions] = useState([]);
+  const editCheckIdRef = useRef(0);
 
   // Avatar Studio Modal State
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
@@ -243,6 +247,69 @@ export function ProfilePage({ username, onNavigate }) {
 
   const daysLeftForChange = getDaysLeftForChange();
 
+  // Real-time Debounced Availability Check for Profile Edit Modal
+  useEffect(() => {
+    if (!isEditModalOpen) {
+      setEditAvailabilityStatus('idle');
+      setEditAvailabilityMessage('');
+      setEditServerSuggestions([]);
+      return;
+    }
+
+    const cleanNew = editUsername ? editUsername.trim().replace(/^@/, '') : '';
+    const cleanOld = currentUser?.username ? currentUser.username.trim().replace(/^@/, '') : '';
+
+    if (!cleanNew) {
+      setEditAvailabilityStatus('idle');
+      setEditAvailabilityMessage('');
+      setEditServerSuggestions([]);
+      return;
+    }
+
+    if (cleanNew.toLowerCase() === cleanOld.toLowerCase()) {
+      setEditAvailabilityStatus('available');
+      setEditAvailabilityMessage('Your current handle');
+      setEditServerSuggestions([]);
+      return;
+    }
+
+    const localErr = validateUsernameString(cleanNew, currentUser?.fullName);
+    if (localErr) {
+      setEditAvailabilityStatus('invalid');
+      setEditAvailabilityMessage(localErr);
+      setEditServerSuggestions([]);
+      return;
+    }
+
+    const checkId = ++editCheckIdRef.current;
+    setEditAvailabilityStatus('checking');
+    setEditAvailabilityMessage('Checking username...');
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiProfileService.checkUsername(cleanNew);
+        if (editCheckIdRef.current !== checkId) return;
+
+        if (res?.data?.available) {
+          setEditAvailabilityStatus('available');
+          setEditAvailabilityMessage('✓ Username available');
+          setEditServerSuggestions([]);
+        } else {
+          setEditAvailabilityStatus('taken');
+          setEditAvailabilityMessage(res?.data?.message ? `❌ ${res.data.message}` : '❌ Username already taken');
+          setEditServerSuggestions(res?.data?.suggestions || []);
+        }
+      } catch (err) {
+        if (editCheckIdRef.current !== checkId) return;
+        setEditAvailabilityStatus('error');
+        setEditAvailabilityMessage(err?.message || 'Unable to check username availability.');
+        setEditServerSuggestions([]);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [editUsername, isEditModalOpen, currentUser?.username, currentUser?.fullName]);
+
   const handleSaveEdit = async (e) => {
     e.preventDefault();
 
@@ -271,6 +338,16 @@ export function ProfilePage({ username, onNavigate }) {
         const errMsg = `Username can only be changed once every 14 days. Please wait ${daysLeftForChange} day(s).`;
         setEditErrors({ username: errMsg });
         addToast(errMsg, 'error');
+        return;
+      }
+      if (editAvailabilityStatus === 'taken') {
+        const errMsg = 'Username already taken. Please choose another.';
+        setEditErrors({ username: errMsg });
+        addToast(errMsg, 'error');
+        return;
+      }
+      if (editAvailabilityStatus === 'checking') {
+        addToast('Please wait while we verify handle availability.', 'info');
         return;
       }
     }
@@ -310,7 +387,13 @@ export function ProfilePage({ username, onNavigate }) {
       }
     } catch (err) {
       console.error(err);
-      addToast(err?.message || 'Failed to update profile.', 'error');
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update profile.';
+      if (err?.response?.status === 409 || errMsg.toLowerCase().includes('already taken') || errMsg.toLowerCase().includes('already exists')) {
+        setEditErrors((prev) => ({ ...prev, username: 'Username already taken. Please choose another.' }));
+        setEditAvailabilityStatus('taken');
+        setEditAvailabilityMessage('❌ Username already taken');
+      }
+      addToast(errMsg, 'error');
     } finally {
       setSavingEdit(false);
     }
@@ -437,7 +520,14 @@ export function ProfilePage({ username, onNavigate }) {
                     <LanguageSelectorDropdown compact={false} />
                     <button
                       type="button"
-                      onClick={() => setIsEditModalOpen(true)}
+                      onClick={() => {
+                        setEditUsername(currentUser?.username ? currentUser.username.replace(/^@/, '') : '');
+                        setEditBio(currentUser?.bio || '');
+                        setEditErrors({});
+                        setEditAvailabilityStatus('available');
+                        setEditAvailabilityMessage('Your current handle');
+                        setIsEditModalOpen(true);
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -817,7 +907,18 @@ export function ProfilePage({ username, onNavigate }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{ position: 'absolute', left: '12px', top: '10px', fontSize: '14px', fontWeight: 800, color: '#6F405F' }}>@</span>
+                  <span style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '10px',
+                    fontSize: '14px',
+                    fontWeight: 800,
+                    color: (editErrors.username || editAvailabilityStatus === 'taken' || editAvailabilityStatus === 'error')
+                      ? '#B33A3A'
+                      : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase()
+                      ? '#2E7D52'
+                      : '#6F405F'
+                  }}>@</span>
                   <input
                     type="text"
                     value={editUsername}
@@ -833,7 +934,11 @@ export function ProfilePage({ username, onNavigate }) {
                       width: '100%',
                       padding: '8px 12px 8px 28px',
                       borderRadius: '10px',
-                      border: editErrors.username ? '1.5px solid #B33A3A' : '1.5px solid #6F405F',
+                      border: (editErrors.username || editAvailabilityStatus === 'taken' || editAvailabilityStatus === 'error')
+                        ? '1.5px solid #B33A3A'
+                        : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase()
+                        ? '1.5px solid #2E7D52'
+                        : '1.5px solid #6F405F',
                       fontSize: '14px',
                       fontWeight: 700,
                       outline: 'none',
@@ -878,16 +983,61 @@ export function ProfilePage({ username, onNavigate }) {
                 </button>
               </div>
 
-              {/* Validation Error Message */}
-              {editErrors.username && (
+              {/* Status and Availability Feedback */}
+              {editErrors.username ? (
                 <div style={{ fontSize: '11.5px', color: '#B33A3A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <AlertTriangle size={13} color="#B33A3A" />
                   <span>{editErrors.username}</span>
                 </div>
-              )}
+              ) : editAvailabilityStatus === 'checking' ? (
+                <div style={{ fontSize: '11.5px', color: '#6F405F', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Loader2 size={13} className="spin-animation" />
+                  <span>Checking username...</span>
+                </div>
+              ) : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase() ? (
+                <div style={{ fontSize: '11.5px', color: '#2E7D52', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <Check size={13} color="#2E7D52" />
+                  <span>{editAvailabilityMessage || '✓ Username available'}</span>
+                </div>
+              ) : editAvailabilityStatus === 'taken' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ fontSize: '11.5px', color: '#B33A3A', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <XCircle size={13} color="#B33A3A" />
+                    <span>{editAvailabilityMessage || '❌ Username already taken'}</span>
+                  </div>
+                  {editServerSuggestions && editServerSuggestions.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
+                      <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>Available alternatives:</span>
+                      {editServerSuggestions.map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          disabled={daysLeftForChange > 0}
+                          onClick={() => {
+                            setEditUsername(sug);
+                            setEditErrors((prev) => ({ ...prev, username: null }));
+                          }}
+                          style={{
+                            padding: '3px 9px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#6F405F',
+                            background: '#F3EBF0',
+                            border: '1px solid rgba(111, 64, 95, 0.25)',
+                            cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          @{sug}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
-              {/* Suggested Number Variants Pills */}
-              {editUsername && (
+              {/* Fallback Suggested Number Variants Pills when no server suggestions are active */}
+              {editUsername && editAvailabilityStatus !== 'taken' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
                   <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>Suggestions:</span>
                   {getSuggestedNumberVariants(editUsername, 3).map((numSug) => (
@@ -947,7 +1097,13 @@ export function ProfilePage({ username, onNavigate }) {
             <Button
               type="submit"
               variant="primary"
-              disabled={savingEdit || Boolean(editErrors.username) || (daysLeftForChange > 0 && editUsername !== profileData?.username?.replace(/^@/, ''))}
+              disabled={
+                savingEdit ||
+                Boolean(editErrors.username) ||
+                editAvailabilityStatus === 'taken' ||
+                editAvailabilityStatus === 'checking' ||
+                (daysLeftForChange > 0 && editUsername !== profileData?.username?.replace(/^@/, ''))
+              }
             >
               {savingEdit ? 'Saving...' : 'Save Changes'}
             </Button>

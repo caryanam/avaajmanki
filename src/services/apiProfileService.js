@@ -36,6 +36,22 @@ export const apiProfileService = {
     }
   },
 
+  // GET /api/profile/check-username
+  async checkUsername(username) {
+    try {
+      const cleanUsername = username ? (username.startsWith('@') ? username.slice(1) : username) : '';
+      const response = await apiClient.get('/api/profile/check-username', {
+        params: { username: cleanUsername },
+      });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      throw err;
+    }
+  },
+
   // POST /api/profile
   async createProfile(data) {
     try {

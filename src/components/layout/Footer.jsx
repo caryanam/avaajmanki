@@ -79,7 +79,7 @@ export function Footer({ onNavigate }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => handleScrollTopNav('/')}>
               <img
                 src={logoMKA}
-                alt="Aawaj Man Ki Logo"
+                alt="AwajManki Logo"
                 style={{
                   width: '36px',
                   height: '36px',
@@ -87,7 +87,7 @@ export function Footer({ onNavigate }) {
                   borderRadius: '8px',
                 }}
               />
-              <span className="font-playfair" style={{ fontSize: '22px', fontWeight: 700, color: '#FFF8F2' }}>Aawaj Man Ki</span>
+              <span className="font-playfair" style={{ fontSize: '22px', fontWeight: 700, color: '#FFF8F2' }}>AwajManki</span>
             </div>
             <p style={{ fontSize: '13.5px', color: '#A0A5BD', lineHeight: 1.6, margin: 0 }}>
               Your trusted platform for anonymous, safe, and judgment-free conversations. AI-powered moderation keeps discussions respectful and toxicity-free.
@@ -144,7 +144,7 @@ export function Footer({ onNavigate }) {
         {/* Bottom Bar */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <span style={{ fontSize: '13.5px', color: '#A0A5BD' }}>
-            © 2026 Aawaj Man Ki. All rights reserved by Caryanamindia Pvt Ltd
+            © 2026 AwajManki. All rights reserved by Caryanamindia Pvt Ltd
           </span>
         </div>
       </div>

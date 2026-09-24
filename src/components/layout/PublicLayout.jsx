@@ -59,14 +59,14 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
           >
             <img
               src={logoMKA}
-              alt="Aawaj Man Ki Logo"
+              alt="AwajManki Logo"
               style={{ width: '36px', height: '36px', objectFit: 'contain', borderRadius: '8px', display: 'block' }}
             />
             <span
               className="brand-name"
               style={{ fontSize: '20px', fontWeight: 700, color: '#FFF8F2', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}
             >
-              Aawaj Man Ki
+              AwajManki
             </span>
           </div>
 

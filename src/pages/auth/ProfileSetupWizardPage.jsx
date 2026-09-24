@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { AuthLayout } from '../../components/layout/AuthLayout.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
@@ -6,7 +6,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { apiProfileService } from '../../services/apiProfileService.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
-import { RefreshCw, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Check } from 'lucide-react';
+import { RefreshCw, CheckCircle2, ArrowRight, ArrowLeft, Sparkles, Check, Loader2, XCircle, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { SUPPORTED_LANGUAGES } from '../../utils/translations.js';
 
@@ -45,8 +45,12 @@ export function ProfileSetupWizardPage({ onNavigate }) {
   const [preferredLanguage, setPreferredLanguage] = useState('EN');
   const [submitting, setSubmitting] = useState(false);
 
-  // Field validation errors
+  // Field validation & Availability state
   const [errors, setErrors] = useState({});
+  const [availabilityStatus, setAvailabilityStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'
+  const [availabilityMessage, setAvailabilityMessage] = useState('');
+  const [serverSuggestions, setServerSuggestions] = useState([]);
+  const latestCheckIdRef = useRef(0);
 
   // Compute initials from current user's name
   const getInitials = () => {
@@ -73,6 +77,54 @@ export function ProfileSetupWizardPage({ onNavigate }) {
     refreshSuggestions();
   }, []);
 
+  // Debounced Username Availability Check with Async Race Condition Protection
+  useEffect(() => {
+    if (!username || !username.trim()) {
+      setAvailabilityStatus('idle');
+      setAvailabilityMessage('');
+      setServerSuggestions([]);
+      return;
+    }
+
+    const clean = username.trim().startsWith('@') ? username.trim().slice(1) : username.trim();
+    const localErr = validateUsernameString(clean, currentUser?.fullName);
+    if (localErr) {
+      setAvailabilityStatus('invalid');
+      setAvailabilityMessage(localErr);
+      setServerSuggestions([]);
+      return;
+    }
+
+    const checkId = ++latestCheckIdRef.current;
+    setAvailabilityStatus('checking');
+    setAvailabilityMessage('Checking username...');
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await apiProfileService.checkUsername(clean);
+        // Stale response protection
+        if (latestCheckIdRef.current !== checkId) return;
+
+        if (res?.data?.available) {
+          setAvailabilityStatus('available');
+          setAvailabilityMessage('✓ Username available');
+          setServerSuggestions([]);
+        } else {
+          setAvailabilityStatus('taken');
+          setAvailabilityMessage(res?.data?.message ? `❌ ${res.data.message}` : '❌ Username already taken');
+          setServerSuggestions(res?.data?.suggestions || []);
+        }
+      } catch (err) {
+        if (latestCheckIdRef.current !== checkId) return;
+        setAvailabilityStatus('error');
+        setAvailabilityMessage(err?.message || 'Unable to check username availability.');
+        setServerSuggestions([]);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [username, currentUser?.fullName]);
+
   // Step 1 -> Step 2
   const handleNextStep1 = () => {
     setStep(2);
@@ -92,6 +144,21 @@ export function ProfileSetupWizardPage({ onNavigate }) {
     if (validationError) {
       setErrors({ username: validationError });
       addToast(validationError, 'error');
+      return;
+    }
+
+    if (availabilityStatus === 'checking') {
+      addToast('Checking username availability... Please wait.', 'info');
+      return;
+    }
+
+    if (availabilityStatus === 'taken') {
+      addToast('Username already taken. Please choose another.', 'error');
+      return;
+    }
+
+    if (availabilityStatus !== 'available') {
+      addToast(availabilityMessage || 'Please choose an available handle.', 'error');
       return;
     }
 
@@ -133,11 +200,8 @@ export function ProfileSetupWizardPage({ onNavigate }) {
         preferredLanguage: preferredLanguage,
       };
 
-      // Call POST /api/profile
-      const res = await apiProfileService.createProfile(payload).catch((apiErr) => {
-        console.warn('[ProfileSetup] Backend POST /api/profile notice:', apiErr);
-        return { success: true, data: payload };
-      });
+      // Call POST /api/profile - NO false success fallback!
+      const res = await apiProfileService.createProfile(payload);
 
       // Instantly change active UI translation
       if (changeLanguage) {
@@ -172,10 +236,16 @@ export function ProfileSetupWizardPage({ onNavigate }) {
       addToast('Profile setup complete! Welcome to Man Ki Aavaj.', 'success');
       onNavigate('/home');
     } catch (err) {
-      console.error(err);
-      const msg = err?.message || 'Profile setup complete!';
-      addToast(msg, 'success');
-      onNavigate('/home');
+      console.error('[ProfileSetup] Create profile failed:', err);
+      const isTaken = err?.status === 409 || err?.message?.toLowerCase()?.includes('already taken');
+      const msg = isTaken ? 'Username already taken' : (err?.message || 'Failed to create profile. Please try again.');
+      addToast(msg, 'error');
+      setErrors((prev) => ({ ...prev, username: msg }));
+      if (isTaken) {
+        setStep(2);
+        setAvailabilityStatus('taken');
+        setAvailabilityMessage('❌ Username already taken');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -334,8 +404,16 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                     width: '100%',
                     padding: '12px 16px 12px 34px',
                     borderRadius: '12px',
-                    border: errors.username ? '2px solid #D93838' : '2px solid var(--deep-plum)',
-                    backgroundColor: errors.username ? 'rgba(217, 56, 56, 0.04)' : 'rgba(111, 64, 95, 0.04)',
+                    border: (errors.username || availabilityStatus === 'taken' || availabilityStatus === 'error')
+                      ? '2px solid #D93838'
+                      : availabilityStatus === 'available'
+                      ? '2px solid #2E7D52'
+                      : '2px solid var(--deep-plum)',
+                    backgroundColor: (errors.username || availabilityStatus === 'taken' || availabilityStatus === 'error')
+                      ? 'rgba(217, 56, 56, 0.04)'
+                      : availabilityStatus === 'available'
+                      ? 'rgba(46, 125, 82, 0.04)'
+                      : 'rgba(111, 64, 95, 0.04)',
                     fontSize: '15px',
                     fontWeight: 700,
                     color: 'var(--eclipse)',
@@ -346,13 +424,59 @@ export function ProfileSetupWizardPage({ onNavigate }) {
                 />
               </div>
 
+              {/* Status & Availability Indicator */}
               {errors.username ? (
-                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D93838', marginTop: '2px' }}>
-                  ⚠️ {errors.username}
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#D93838', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <AlertCircle size={14} /> {errors.username}
                 </span>
-              ) : username ? (
-                <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#2E7D52', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                  <Check size={14} /> Valid anonymous handle. Real names are protected.
+              ) : availabilityStatus === 'checking' ? (
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--deep-plum)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                  <Loader2 size={14} className="spin-animation" /> Checking username...
+                </span>
+              ) : availabilityStatus === 'available' ? (
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#2E7D52', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <Check size={15} strokeWidth={2.5} /> {availabilityMessage || '✓ Username available'}
+                </span>
+              ) : availabilityStatus === 'taken' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#D93838', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <XCircle size={15} /> {availabilityMessage || '❌ Username already taken'}
+                  </span>
+                  {serverSuggestions && serverSuggestions.length > 0 && (
+                    <div style={{ marginTop: '4px' }}>
+                      <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--hurricane)' }}>
+                        Suggested available handles:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                        {serverSuggestions.map((sug) => (
+                          <button
+                            key={sug}
+                            type="button"
+                            onClick={() => {
+                              setUsername(`@${sug}`);
+                              setErrors({});
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--deep-plum)',
+                              backgroundColor: 'rgba(111, 64, 95, 0.08)',
+                              color: 'var(--deep-plum)',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            @{sug}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : availabilityStatus === 'error' ? (
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#D93838', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                  <AlertCircle size={14} /> {availabilityMessage}
                 </span>
               ) : null}
             </div>
@@ -421,20 +545,22 @@ export function ProfileSetupWizardPage({ onNavigate }) {
               <button
                 type="button"
                 onClick={handleNextStep2}
+                disabled={availabilityStatus !== 'available' || !!errors.username}
                 style={{
                   flex: 1,
                   padding: '12px',
                   borderRadius: '8px',
-                  background: 'var(--eclipse)',
+                  background: (availabilityStatus !== 'available' || !!errors.username) ? 'var(--hurricane, #888)' : 'var(--eclipse)',
                   color: 'var(--pure-white)',
                   fontSize: '14px',
                   fontWeight: 700,
-                  cursor: 'pointer',
+                  cursor: (availabilityStatus !== 'available' || !!errors.username) ? 'not-allowed' : 'pointer',
                   border: 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
+                  opacity: (availabilityStatus !== 'available' || !!errors.username) ? 0.6 : 1,
                 }}
               >
                 Next: Add Bio <ArrowRight size={16} />

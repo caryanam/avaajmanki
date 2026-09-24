@@ -247,8 +247,8 @@ export function RegisterPage({ onNavigate }) {
           {/* Privacy badges */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
             {[
-              { icon: '🔒', text: 'Real name never shown publicly' },
-              { icon: '🎭', text: 'Only username visible to others' },
+              { icon: '🔒', text: 'Your real name is never shown publicly.' },
+              { icon: '🎭', text: 'Only your username is visible to others.' },
             ].map(b => (
               <span key={b.text} style={{
                 display: 'flex', alignItems: 'center', gap: 5,

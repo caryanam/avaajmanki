@@ -382,7 +382,7 @@ export function LandingPage({ onNavigate }) {
           >
             <img
               src={logoMKA}
-              alt="Aawaj Man Ki Logo"
+              alt="AwajManki Logo"
               style={{
                 width: '48px',
                 height: '48px',
@@ -394,7 +394,7 @@ export function LandingPage({ onNavigate }) {
               className="font-playfair"
               style={{ fontSize: '24px', fontWeight: 700, color: '#FFF8F2', letterSpacing: '-0.02em' }}
             >
-              Aawaj Man Ki
+              AwajManki
             </span>
           </div>
 
@@ -610,7 +610,7 @@ export function LandingPage({ onNavigate }) {
             <div style={{ flex: '1 1 420px', display: 'flex', flexDirection: 'column', gap: '20px', position: 'relative' }}>
               <div>
                 <span style={{ fontSize: '13px', fontWeight: 600, color: '#63344F', letterSpacing: '0.04em' }}>
-                  Why Aawaj Man Ki?
+                  Why AwajManki?
                 </span>
                 <div style={{ width: '28px', height: '2px', backgroundColor: '#F2B08D', borderRadius: '1px', marginTop: '4px' }} />
               </div>
@@ -710,7 +710,7 @@ export function LandingPage({ onNavigate }) {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '14.5px', fontWeight: 700, color: '#332821', borderBottom: '1px solid #F0E7E0', paddingBottom: '12px' }}>
                     <img src={logoMKA} alt="Logo" style={{ width: '22px', height: '22px', objectFit: 'contain', borderRadius: '5px' }} />
-                    <span>Aawaj Man Ki</span>
+                    <span>AwajManki</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {['Anonymous', 'Respectful', 'Ideas First', 'AI Moderated', 'Meaningful Discussions', 'Toxicity Free'].map((item, i) => (
@@ -963,7 +963,7 @@ export function LandingPage({ onNavigate }) {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span style={{ fontSize: '14px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.1 }}>
-                        Aawaj Man Ki
+                        AwajManki
                       </span>
                       <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.85)' }}>
                         Anonymous Social App

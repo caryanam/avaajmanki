@@ -144,7 +144,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <img
                 src={logoMKA}
-                alt="Aawaj Man Ki"
+                alt="AwajManki"
                 style={{
                   width: '34px',
                   height: '34px',
@@ -166,7 +166,7 @@ export function TopNavbar({ activeRoute, onNavigate }) {
                 whiteSpace: 'nowrap',
               }}
             >
-              Aawaj Man Ki
+              AwajManki
             </span>
           </button>
 
