@@ -16,13 +16,14 @@ import { getMediaUrl } from '../../config/env.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
 import { apiClient } from '../../services/apiClient.js';
+import { PulseDiscussionCard } from '../pulse/PulseDiscussionCard.jsx';
 
 export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false, onToggleComments, activeCommentsPostId }) {
   const { reactToPost, toggleSavePost, savedPostIds, deletePost, updatePost } = usePosts();
 
   const { commentsByPost, createComment, fetchComments } = useComments();
   const { currentUser } = useAuth();
-  const { blockUser, muteUser, hidePost, hiddenPosts = [] } = useReports();
+  const { blockUser, muteUser, hidePost, hiddenPosts = [], isHidden } = useReports();
   const { currentLanguage, translateText, translateTextAsync, t } = useLanguage();
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -97,7 +98,9 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
   }, [currentLanguage, post.title, post.originalTitle, post.originalContent, post.content, post.description, translateTextAsync]);
 
   const isPostHiddenInContext = Boolean(
-    hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id)))
+    isHidden
+      ? isHidden(post?.id)
+      : (hiddenPosts && (hiddenPosts.includes(String(post?.id)) || hiddenPosts.includes(Number(post?.id))))
   );
 
   const isSaved = savedPostIds.includes(post.id);
@@ -131,6 +134,10 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
     return null;
   }
 
+  // Mixed Feed Delegate: Dedicated editorial pulse discussion card
+  if (post.feedItemType === 'PULSE_DISCUSSION' || (post.formattedId && String(post.formattedId).startsWith('PULSE_'))) {
+    return <PulseDiscussionCard item={post} onNavigate={onNavigate} />;
+  }
 
   return (
     <article
@@ -437,8 +444,9 @@ export function PostCard({ post, onNavigate, onPostHover, isHoverActive = false,
             <CommentComposer
               postId={post.id}
               postAuthorUsername={post.username}
-              onSubmit={async (text) => {
-                await createComment(post.id, text, post.username);
+              enableImage={true}
+              onSubmit={async (text, imageUrl) => {
+                await createComment(post.id, text, post.username, imageUrl);
               }}
               onNavigate={onNavigate}
               placeholder="Write a comment..."

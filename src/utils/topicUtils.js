@@ -23,106 +23,137 @@ export const TOPIC_CATEGORIES = [
   {
     name: 'Feelings',
     categoryKey: 'FEELINGS_CAT',
+    translationKey: 'topic.categoryFeelings',
     iconName: 'Heart',
     accent: '#D81B60',
     gradient: 'linear-gradient(135deg, rgba(216,27,96,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'LOVE', label: 'Love', icon: '❤️' },
-      { id: 'BREAKUP', label: 'Breakup', icon: '💔' },
-      { id: 'MISSING_SOMEONE', label: 'Missing Someone', icon: '🥺' },
-      { id: 'LONELINESS', label: 'Loneliness', icon: '🌙' },
-      { id: 'FRIENDSHIP', label: 'Friendship', icon: '🤝' },
-      { id: 'FAMILY', label: 'Family', icon: '🏡' },
-      { id: 'HAPPINESS', label: 'Happiness', icon: '😊' },
-      { id: 'FRUSTRATION', label: 'Frustration', icon: '😤' },
+      { id: 'LOVE', label: 'Love', translationKey: 'topic.subtopicLove', icon: '❤️' },
+      { id: 'BREAKUP', label: 'Breakup', translationKey: 'topic.subtopicBreakup', icon: '💔' },
+      { id: 'MISSING_SOMEONE', label: 'Missing Someone', translationKey: 'topic.subtopicMissingSomeone', icon: '🥺' },
+      { id: 'LONELINESS', label: 'Loneliness', translationKey: 'topic.subtopicLoneliness', icon: '🌙' },
+      { id: 'FRIENDSHIP', label: 'Friendship', translationKey: 'topic.subtopicFriendship', icon: '🤝' },
+      { id: 'FAMILY', label: 'Family', translationKey: 'topic.subtopicFamily', icon: '🏡' },
+      { id: 'HAPPINESS', label: 'Happiness', translationKey: 'topic.subtopicHappiness', icon: '😊' },
+      { id: 'FRUSTRATION', label: 'Frustration', translationKey: 'topic.subtopicFrustration', icon: '😤' },
     ]
   },
   {
     name: 'Expression',
     categoryKey: 'EXPRESSION_CAT',
+    translationKey: 'topic.categoryExpression',
     iconName: 'Feather',
     accent: '#7B1FA2',
     gradient: 'linear-gradient(135deg, rgba(123,31,162,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'POETRY', label: 'Poetry', icon: '📜' },
-      { id: 'SHAYARI', label: 'Shayari', icon: '✍️' },
-      { id: 'CONFESSION', label: 'Confession', icon: '🤫' },
-      { id: 'PERSONAL_STORY', label: 'Personal Story', icon: '📖' },
-      { id: 'QUOTES', label: 'Quotes', icon: '💬' },
+      { id: 'POETRY', label: 'Poetry', translationKey: 'topic.subtopicPoetry', icon: '📜' },
+      { id: 'SHAYARI', label: 'Shayari', translationKey: 'topic.subtopicShayari', icon: '✍️' },
+      { id: 'CONFESSION', label: 'Confession', translationKey: 'topic.subtopicConfession', icon: '🤫' },
+      { id: 'PERSONAL_STORY', label: 'Personal Story', translationKey: 'topic.subtopicPersonalStory', icon: '📖' },
+      { id: 'QUOTES', label: 'Quotes', translationKey: 'topic.subtopicQuotes', icon: '💬' },
     ]
   },
   {
     name: 'Life & Work',
     categoryKey: 'LIFE_WORK_CAT',
+    translationKey: 'topic.categoryLifeWork',
     iconName: 'Briefcase',
     accent: '#1565C0',
-    gradient: 'linear-gradient(135deg, rgba(21,101,192,0.1) 0%, rgba(255,255,255,0.95) 100%)',
+    gradient: 'linear-gradient(135deg, rgba(215,101,192,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'LIFE', label: 'Life', icon: '🌿' },
-      { id: 'JOB', label: 'Job', icon: '💼' },
-      { id: 'BOSS', label: 'Boss', icon: '👔' },
-      { id: 'BUSINESS', label: 'Business', icon: '📈' },
-      { id: 'MONEY', label: 'Money', icon: '💰' },
-      { id: 'EDUCATION', label: 'Education', icon: '🎓' },
-      { id: 'CAREER', label: 'Career', icon: '🚀' },
+      { id: 'LIFE', label: 'Life', translationKey: 'topic.subtopicLife', icon: '🌿' },
+      { id: 'JOB', label: 'Job', translationKey: 'topic.subtopicJob', icon: '💼' },
+      { id: 'BOSS', label: 'Boss', translationKey: 'topic.subtopicBoss', icon: '👔' },
+      { id: 'BUSINESS', label: 'Business', translationKey: 'topic.subtopicBusiness', icon: '📈' },
+      { id: 'MONEY', label: 'Money', translationKey: 'topic.subtopicMoney', icon: '💰' },
+      { id: 'EDUCATION', label: 'Education', translationKey: 'topic.subtopicEducation', icon: '🎓' },
+      { id: 'CAREER', label: 'Career', translationKey: 'topic.subtopicCareer', icon: '🚀' },
     ]
   },
   {
     name: 'Society & Politics',
     categoryKey: 'SOCIETY_POLITICS_CAT',
+    translationKey: 'topic.categorySocietyPolitics',
     iconName: 'Landmark',
     accent: '#C62828',
     gradient: 'linear-gradient(135deg, rgba(198,40,40,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'POLITICS', label: 'Politics', icon: '🏛️' },
-      { id: 'GOVERNMENT', label: 'Government', icon: '⚖️' },
-      { id: 'ELECTIONS', label: 'Elections', icon: '🗳️' },
-      { id: 'LOCAL_ISSUES', label: 'Local Issues', icon: '📍' },
-      { id: 'SOCIAL_ISSUES', label: 'Social Issues', icon: '📢' },
-      { id: 'PUBLIC_PROBLEMS', label: 'Public Problems', icon: '⚠️' },
+      { id: 'POLITICS', label: 'Politics', translationKey: 'topic.subtopicPolitics', icon: '🏛️' },
+      { id: 'GOVERNMENT', label: 'Government', translationKey: 'topic.subtopicGovernment', icon: '⚖️' },
+      { id: 'ELECTIONS', label: 'Elections', translationKey: 'topic.subtopicElections', icon: '🗳️' },
+      { id: 'LOCAL_ISSUES', label: 'Local Issues', translationKey: 'topic.subtopicLocalIssues', icon: '📍' },
+      { id: 'SOCIAL_ISSUES', label: 'Social Issues', translationKey: 'topic.subtopicSocialIssues', icon: '📢' },
+      { id: 'PUBLIC_PROBLEMS', label: 'Public Problems', translationKey: 'topic.subtopicPublicProblems', icon: '⚠️' },
     ]
   },
   {
     name: 'Entertainment',
     categoryKey: 'ENTERTAINMENT_CAT',
+    translationKey: 'topic.categoryEntertainment',
     iconName: 'Film',
     accent: '#E5A93C',
     gradient: 'linear-gradient(135deg, rgba(229,169,60,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'MOVIE_REVIEW', label: 'Movie Review', icon: '🎬' },
-      { id: 'MUSIC', label: 'Music', icon: '🎵' },
-      { id: 'WEB_SERIES', label: 'Web Series', icon: '📺' },
-      { id: 'CELEBRITY_DISCUSSION', label: 'Celebrity Discussion', icon: '🌟' },
-      { id: 'BOLLYWOOD', label: 'Bollywood', icon: '🍿' },
+      { id: 'MOVIE_REVIEW', label: 'Movie Review', translationKey: 'topic.subtopicMovieReview', icon: '🎬' },
+      { id: 'MUSIC', label: 'Music', translationKey: 'topic.subtopicMusic', icon: '🎵' },
+      { id: 'WEB_SERIES', label: 'Web Series', translationKey: 'topic.subtopicWebSeries', icon: '📺' },
+      { id: 'CELEBRITY_DISCUSSION', label: 'Celebrity Discussion', translationKey: 'topic.subtopicCelebrityDiscussion', icon: '🌟' },
+      { id: 'BOLLYWOOD', label: 'Bollywood', translationKey: 'topic.subtopicBollywood', icon: '🍿' },
     ]
   },
   {
     name: 'Sports',
     categoryKey: 'SPORTS_CAT',
+    translationKey: 'topic.categorySports',
     iconName: 'Trophy',
     accent: '#2E7D32',
     gradient: 'linear-gradient(135deg, rgba(46,125,50,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'CRICKET', label: 'Cricket', icon: '🏏' },
-      { id: 'FOOTBALL', label: 'Football', icon: '⚽' },
-      { id: 'OTHER_SPORTS', label: 'Other Sports', icon: '🏆' },
+      { id: 'CRICKET', label: 'Cricket', translationKey: 'topic.subtopicCricket', icon: '🏏' },
+      { id: 'FOOTBALL', label: 'Football', translationKey: 'topic.subtopicFootball', icon: '⚽' },
+      { id: 'OTHER_SPORTS', label: 'Other Sports', translationKey: 'topic.subtopicOtherSports', icon: '🏆' },
     ]
   },
   {
     name: 'Other & Community',
     categoryKey: 'OTHER_CAT',
+    translationKey: 'topic.categoryOtherCommunity',
     iconName: 'Compass',
     accent: '#6F405F',
     gradient: 'linear-gradient(135deg, rgba(111,64,95,0.1) 0%, rgba(255,255,255,0.95) 100%)',
     subtopics: [
-      { id: 'GENERAL', label: 'General', icon: '💬' },
-      { id: 'TECHNOLOGY', label: 'Technology', icon: '💻' },
-      { id: 'OTHER', label: 'Other', icon: '✨' },
+      { id: 'GENERAL', label: 'General', translationKey: 'topic.subtopicGeneral', icon: '💬' },
+      { id: 'TECHNOLOGY', label: 'Technology', translationKey: 'topic.subtopicTechnology', icon: '💻' },
+      { id: 'OTHER', label: 'Other', translationKey: 'topic.subtopicOther', icon: '✨' },
     ]
   }
 ];
 
 export const ALL_SUBTOPIC_IDS = TOPIC_CATEGORIES.flatMap(cat => cat.subtopics.map(st => st.id));
+
+export function getCategoryDisplayName(cat, t) {
+  if (!cat) return '';
+  const key = cat.translationKey || (cat.name ? `topic.category${cat.name.replace(/[^A-Za-z0-9]/g, '')}` : null);
+  if (t && key) {
+    return t(key, cat.name || '');
+  }
+  return cat.name || '';
+}
+
+export function getSubtopicDisplayLabel(subtopicOrId, t) {
+  if (!subtopicOrId) return '';
+  const id = typeof subtopicOrId === 'string' ? subtopicOrId : subtopicOrId.id;
+  const rawLabel = typeof subtopicOrId === 'object' && subtopicOrId.label ? subtopicOrId.label : id;
+  if (!t) return rawLabel;
+
+  for (const cat of TOPIC_CATEGORIES) {
+    const found = cat.subtopics.find(st => st.id === id);
+    if (found && found.translationKey) {
+      return t(found.translationKey, found.label || rawLabel);
+    }
+  }
+  return rawLabel;
+}
 
 export function isTopicName(name) {
   if (!name || typeof name !== 'string') return false;

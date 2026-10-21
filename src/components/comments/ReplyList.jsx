@@ -15,6 +15,20 @@ export function ReplyList({
 }) {
   const [showReplies, setShowReplies] = useState(true);
   const [visibleCount, setVisibleCount] = useState(10);
+  const prevCountRef = React.useRef(replies?.length || 0);
+
+  React.useEffect(() => {
+    if (showReplyComposer) {
+      setShowReplies(true);
+    }
+  }, [showReplyComposer]);
+
+  React.useEffect(() => {
+    if (replies && replies.length > prevCountRef.current) {
+      setShowReplies(true);
+    }
+    prevCountRef.current = replies?.length || 0;
+  }, [replies?.length]);
 
   // If no replies and no composer, show nothing
   if ((!replies || replies.length === 0) && !showReplyComposer) return null;

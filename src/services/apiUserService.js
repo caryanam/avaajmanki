@@ -59,7 +59,10 @@ export const apiUserService = {
   // PUT /api/users/password { currentPassword, newPassword }
   async updatePassword(currentPassword, newPassword) {
     try {
-      const response = await apiClient.put('/api/users/password', { currentPassword, newPassword });
+      const payload = typeof currentPassword === 'object' && currentPassword !== null
+        ? currentPassword
+        : { currentPassword, newPassword };
+      const response = await apiClient.put('/api/users/password', payload);
       return response.data;
     } catch (err) {
       if (err.response?.data) throw err.response.data;

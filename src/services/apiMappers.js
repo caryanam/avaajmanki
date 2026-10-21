@@ -22,6 +22,11 @@ function resolveUsername(item) {
 
   let u = item.username || item.authorUsername || item.user?.username || item.author?.username;
 
+  // Prevent raw emails from being rendered as public handles
+  if (u && (u.includes("@") && u.includes("."))) {
+    u = null;
+  }
+
   // 1. If explicit username handle exists on post/comment, sanitize spaces and return handle
   if (u && u !== anonymousName && !u.startsWith('user_')) {
     const cleanU = u.trim().replace(/\s+/g, '');
@@ -70,6 +75,10 @@ function resolveUsername(item) {
 
 export function mapPost(post) {
   if (!post) return null;
+
+  if (post.feedItemType === 'PULSE_DISCUSSION' || (post.formattedId && String(post.formattedId).startsWith('PULSE_'))) {
+    return mapPulseItem(post);
+  }
 
   const formattedUname = resolveUsername(post);
 
@@ -146,6 +155,7 @@ export function mapPost(post) {
     audio: audioObj,
     audioUrl: resolvedAudioUrl,
     imageUrl: resolvedCoverUrl,
+    isOwnPost: post.isOwnPost ?? false,
     status: post.status || 'ACTIVE',
     createdAt: post.createdAt || new Date().toISOString(),
   };
@@ -181,8 +191,14 @@ export function mapComment(comment) {
   const rawContent = sanitizeEncodedSymbols(comment.originalContent || comment.content || '');
   const rawTranslated = comment.translatedContent ? sanitizeEncodedSymbols(comment.translatedContent) : null;
 
+  const resolvedAuthorId = comment.authorId ?? comment.userId ?? comment.user?.id ?? null;
+
   return {
     ...comment,
+    authorId: resolvedAuthorId,
+    userId: resolvedAuthorId,
+    isOwnComment: comment.isOwnComment ?? false,
+    imageUrl: comment.imageUrl ? getMediaUrl(comment.imageUrl) : null,
     originalContent: rawContent,
     translatedContent: rawTranslated,
     displayLanguage: comment.displayLanguage || comment.originalLanguage || 'EN',
@@ -232,3 +248,32 @@ export function mapNotification(notification) {
     message: msg,
   };
 }
+
+export function mapPulseItem(item) {
+  if (!item) return null;
+  const rawId = item.id;
+  const syntheticId = item.formattedId || (rawId ? `PULSE_${rawId}` : `pulse_${Date.now()}`);
+
+  return {
+    ...item,
+    id: rawId,
+    feedItemId: item.feedItemId || syntheticId,
+    feedItemType: 'PULSE_DISCUSSION',
+    formattedId: item.formattedId || syntheticId,
+    title: item.title || '',
+    summary: item.summary || '',
+    content: item.content || item.summary || '',
+    sourceName: item.sourceName || 'News Wire',
+    sourceUrl: item.sourceUrl || null,
+    imageUrl: item.imageUrl ? getMediaUrl(item.imageUrl) : null,
+    topic: (item.topic || 'POLITICS').toUpperCase(),
+    subtopic: item.subtopic || item.topic || 'CURRENT_AFFAIRS',
+    placement: item.placement || 'NORMAL_FEED',
+    publishedAt: item.publishedAt || item.createdAt || new Date().toISOString(),
+    likeCount: Number(item.likeCount || 0),
+    commentCount: Number(item.commentCount || 0),
+    takeCount: Number(item.takeCount || 0),
+    featuredPriority: item.featuredPriority || 0,
+  };
+}
+

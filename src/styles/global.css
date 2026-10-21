@@ -4,6 +4,12 @@
 @import './layout.css';
 @import './utilities.css';
 @import './responsive.css';
+@import './home.css';
+@import './pulse.css';
+@import './explore.css';
+@import './topic-discussion.css';
+@import './create-topic-modal.css';
+@import './settings.css';
 
 html {
   scroll-behavior: smooth;

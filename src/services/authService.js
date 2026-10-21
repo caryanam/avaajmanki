@@ -18,23 +18,27 @@ export const authService = {
         localStorage.setItem('auth_token', res.data.token);
         localStorage.setItem('auth_user', JSON.stringify(res.data));
 
-        // Always check profile via GET /api/profile/me (using token)
-        let hasProfile = false;
-        try {
-          const profileRes = await apiProfileService.getMyProfile();
-          if (profileRes && profileRes.success && profileRes.data) {
-            hasProfile = true;
-            localStorage.setItem(`user_profile_${res.data.id}`, JSON.stringify(profileRes.data));
-            localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
-          }
-        } catch (profileErr) {
-          if (profileErr.status === 404 || profileErr.response?.status === 404) {
-            hasProfile = false;
+        // For regular users, check profile via GET /api/profile/me (using token)
+        let hasProfile = res.data.role === 'ADMIN';
+        if (res.data.role !== 'ADMIN') {
+          try {
+            const profileRes = await apiProfileService.getMyProfile();
+            if (profileRes && profileRes.success && profileRes.data) {
+              hasProfile = true;
+              localStorage.setItem(`user_profile_${res.data.id || res.data.userId}`, JSON.stringify(profileRes.data));
+              localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
+            }
+          } catch (profileErr) {
+            if (profileErr.status === 404 || profileErr.response?.status === 404) {
+              hasProfile = false;
+            }
           }
         }
 
+        const resolvedId = res.data.userId || res.data.id;
         const user = {
-          id: res.data.id,
+          id: resolvedId,
+          userId: resolvedId,
           fullName: res.data.fullName,
           email: res.data.email,
           mobileNumber: res.data.mobileNumber,
@@ -199,14 +203,21 @@ export const authService = {
       try {
         const u = JSON.parse(userStr);
         let profile = null;
-        if (u.id) {
-          const stored = localStorage.getItem(`user_profile_${u.id}`) || localStorage.getItem('user_profile');
+        const profileStr = localStorage.getItem('user_profile');
+        if (profileStr) {
+          try { profile = JSON.parse(profileStr); } catch (e) {}
+        }
+        const resolvedId = u.id || u.userId || profile?.userId || profile?.id;
+        if (resolvedId && !profile) {
+          const stored = localStorage.getItem(`user_profile_${resolvedId}`);
           if (stored) try { profile = JSON.parse(stored); } catch (e) {}
         }
         const uname = u.username || profile?.username;
         const formattedUsername = uname ? (uname.startsWith('@') ? uname : `@${uname}`) : undefined;
         return {
           ...u,
+          id: resolvedId,
+          userId: resolvedId,
           ...(formattedUsername ? { username: formattedUsername } : {}),
           avatarInitials: u.avatarInitials || (u.fullName || uname || 'AN').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
         };

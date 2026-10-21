@@ -2,6 +2,7 @@ import { apiClient } from './apiClient.js';
 import { mockPostService } from './mockPostService.js';
 import { mockAuthService } from './mockAuthService.js';
 import { toBackendTopic, toBackendPostType } from '../utils/enumMappers.js';
+import { normalizeReactionType } from '../utils/normalizeReaction.js';
 
 const isMockMode = () => {
   const token = localStorage.getItem('auth_token');
@@ -112,6 +113,7 @@ export const apiPostService = {
         movieRating: postData.movieRating || null,
         isSpoiler: Boolean(postData.isSpoiler),
         mood: postData.mood || null,
+        pulseItemId: postData.pulseItemId ? Number(postData.pulseItemId) : null,
       };
 
       const response = await apiClient.post('/api/posts', payload);
@@ -215,10 +217,33 @@ export const apiPostService = {
     }
   },
 
+  // GET /api/posts/me
+  async getMyPosts(params = {}) {
+    try {
+      const response = await apiClient.get('/api/posts/me', { params });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, data: { content: [] } };
+    }
+  },
+
+  // GET /api/posts/liked
+  async getLikedPosts(params = {}) {
+    try {
+      const response = await apiClient.get('/api/posts/liked', { params });
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) throw err.response.data;
+      return { success: true, data: { content: [] } };
+    }
+  },
+
   // POST /api/posts/{id}/react { reactionType }
   async reactToPost(id, reactionType) {
+    const normalizedReaction = normalizeReactionType(reactionType);
     try {
-      const response = await apiClient.post(`/api/posts/${id}/react`, { reactionType });
+      const response = await apiClient.post(`/api/posts/${id}/react`, { reactionType: normalizedReaction });
       return response.data;
     } catch (err) {
       if (err.response?.data) throw err.response.data;

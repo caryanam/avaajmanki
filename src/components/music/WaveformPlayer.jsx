@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Pause, Play, Volume2, VolumeX, LoaderCircle, AlertCircle } from 'lucide-react';
 import { useMoodMusic } from '../../context/MoodMusicContext.jsx';
 import { getMediaUrl } from '../../config/env.js';
 import defaultCover from '../../assets/music-cover.jpg';
@@ -24,8 +24,16 @@ export function WaveformPlayer({
   const waveformContainerRef = useRef(null);
   const resolvedAudioUrl = getMediaUrl(audioUrl);
   const resolvedCoverUrl = coverUrl ? getMediaUrl(coverUrl) : defaultCover;
-  const isActive = music.currentTrack?.audioUrl === resolvedAudioUrl || music.currentTrack?.audioUrl === audioUrl;
-  const isPlaying = isActive && music.isPlaying;
+  const generatedId = String(trackId || audioUrl);
+  const isActive = Boolean(
+    music.currentTrack &&
+      (music.currentTrack.audioUrl === resolvedAudioUrl ||
+        music.currentTrack.audioUrl === audioUrl ||
+        String(music.currentTrack.id) === `community-audio-${generatedId}`)
+  );
+  const hasError = isActive && Boolean(music.playbackError);
+  const isBuffering = isActive && Boolean(music.isBuffering);
+  const isPlaying = isActive && Boolean(music.isPlaying) && !isBuffering && !hasError;
   const duration = isActive && music.duration ? music.duration : durationSeconds;
   const progressPercent = isActive ? music.progress : 0;
   const currentTime = duration > 0 ? (progressPercent / 100) * duration : 0;
@@ -53,11 +61,15 @@ export function WaveformPlayer({
 
   const togglePlay = () => {
     if (isActive) {
-      music.togglePlay();
+      if (hasError) {
+        music.retry();
+      } else {
+        music.togglePlay();
+      }
       return;
     }
     const track = {
-      id: `community-audio-${trackId || audioUrl}`,
+      id: `community-audio-${generatedId}`,
       title,
       artist: artistName || 'Community',
       audioUrl: resolvedAudioUrl,
@@ -82,12 +94,21 @@ export function WaveformPlayer({
     <div className="waveform-player-card">
       <div className="waveform-player-body">
         <button
-          className="waveform-play-btn"
+          className={`waveform-play-btn ${hasError ? 'error' : ''}`}
           type="button"
           onClick={togglePlay}
-          aria-label={isPlaying ? 'Pause voice note' : 'Play voice note'}
+          aria-label={hasError ? `Error: ${music.playbackError}. Tap to retry` : isPlaying ? 'Pause voice note' : 'Play voice note'}
+          title={hasError ? 'Playback error. Tap to retry' : isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <Pause size={18} /> : <Play size={18} style={{ marginLeft: 2 }} />}
+          {hasError ? (
+            <AlertCircle size={18} color="#FF3B30" />
+          ) : isBuffering ? (
+            <LoaderCircle size={18} className="music-spin" />
+          ) : isPlaying ? (
+            <Pause size={18} />
+          ) : (
+            <Play size={18} style={{ marginLeft: 2 }} />
+          )}
         </button>
 
         <div className="waveform-track-info">

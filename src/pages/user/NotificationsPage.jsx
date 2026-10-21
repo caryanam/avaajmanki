@@ -1,147 +1,156 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
 import { useNotifications } from '../../context/NotificationContext.jsx';
-import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
-import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
-
-import { Button } from '../../components/common/Button.jsx';
-import { EmptyState } from '../../components/common/EmptyState.jsx';
-import { Bell, Check, CheckCheck, Trash2, ArrowRight } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext.jsx';
-import { resolveNotificationPath } from '../../utils/notificationNavigation.js';
-
-function NotificationItemText({ message, currentLanguage, translateTextAsync, t }) {
-  const [text, setText] = useState(message);
-
-  useEffect(() => {
-    if (!message) return;
-    let isMounted = true;
-
-    if (message.startsWith('@')) {
-      const spaceIdx = message.indexOf(' ');
-      if (spaceIdx > 0) {
-        const username = message.substring(0, spaceIdx);
-        const actionText = message.substring(spaceIdx + 1);
-
-        if (translateTextAsync && currentLanguage !== 'English') {
-          translateTextAsync(actionText, currentLanguage)
-            .then(translatedAction => {
-              if (isMounted) setText(`${username} ${translatedAction}`);
-            })
-            .catch(() => {
-              if (isMounted) setText(message);
-            });
-          return () => { isMounted = false; };
-        }
-      }
-    } else if (translateTextAsync && currentLanguage !== 'English') {
-      translateTextAsync(message, currentLanguage)
-        .then(translated => {
-          if (isMounted) setText(translated);
-        })
-        .catch(() => {
-          if (isMounted) setText(message);
-        });
-      return () => { isMounted = false; };
-    }
-
-    setText(message);
-  }, [message, currentLanguage, translateTextAsync]);
-
-  return <span>{text}</span>;
-}
+import { NotificationHeroBanner } from '../../components/notifications/NotificationHeroBanner.jsx';
+import { NotificationFilterTabs } from '../../components/notifications/NotificationFilterTabs.jsx';
+import { NotificationItemRow } from '../../components/notifications/NotificationItemRow.jsx';
+import { NotificationRightSidebar } from '../../components/notifications/NotificationRightSidebar.jsx';
+import { getNotificationCategory } from '../../utils/notificationHelpers.js';
+import { Bell, Sparkles } from 'lucide-react';
+import '../../styles/notifications.css';
 
 export function NotificationsPage({ onNavigate }) {
-  const { notifications, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
-  const { currentLanguage, translateTextAsync, t } = useLanguage();
-  const [filterUnread, setFilterUnread] = useState(false);
+  const {
+    notifications = [],
+    unreadCount = 0,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+  } = useNotifications();
 
-  const displayList = filterUnread ? notifications.filter((n) => !n.isRead) : notifications;
+  // Active filter tab/category: 'all' | 'comments' | 'replies' | 'likes' | 'mentions' | 'follows' | 'system'
+  const [activeCategory, setActiveCategory] = useState('all');
+
+  // Compute live authentic counts for each category
+  const categoryCounts = useMemo(() => {
+    const counts = {
+      all: notifications.length,
+      comments: 0,
+      replies: 0,
+      likes: 0,
+      mentions: 0,
+      follows: 0,
+      system: 0,
+    };
+
+    notifications.forEach((item) => {
+      const cat = getNotificationCategory(item);
+      if (counts[cat] !== undefined) {
+        counts[cat] += 1;
+      }
+    });
+
+    return counts;
+  }, [notifications]);
+
+  // Filtered notifications based on active category
+  const filteredNotifications = useMemo(() => {
+    if (activeCategory === 'all') {
+      return notifications;
+    }
+    return notifications.filter((item) => getNotificationCategory(item) === activeCategory);
+  }, [notifications, activeCategory]);
 
   return (
-    <UserLayout activeRoute="/notifications" onNavigate={onNavigate}>
-      <div className="flex-col gap-md">
-        <div className="flex-row justify-between items-center flex-wrap gap-sm">
-          <div>
-            <h1 className="page-heading">{t('notifications', 'Notifications')}</h1>
-          </div>
+    <UserLayout activeRoute="/notifications" onNavigate={onNavigate} wide={true}>
+      <div className="notifications-page-layout">
+        {/* ── CENTER STREAM (Column 2 of Desktop Grid) ── */}
+        <section className="notif-center-col" aria-label="Notifications Stream">
+          {/* 1. Notifications Hero Banner */}
+          <NotificationHeroBanner />
 
-          <div className="flex-row items-center gap-sm">
-            <Button
-              variant={filterUnread ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setFilterUnread(!filterUnread)}
-            >
-              {filterUnread ? t('showAll', 'Show All') : t('filterUnread', 'Filter Unread')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={markAllAsRead} icon={CheckCheck}>
-              {t('markAllRead', 'Mark All Read')}
-            </Button>
-          </div>
-        </div>
-
-        {displayList.length === 0 ? (
-          <EmptyState
-            title={t('noNotifications', 'No Notifications Yet')}
-            description={t('noNotificationsDesc', 'There are no items to display at this time.')}
-            icon={Bell}
+          {/* 2. Filter Tabs + Mark All As Read */}
+          <NotificationFilterTabs
+            activeTab={activeCategory}
+            onSelectTab={setActiveCategory}
+            onMarkAllAsRead={markAllAsRead}
+            hasUnread={unreadCount > 0}
           />
-        ) : (
-          <div className="flex-col gap-sm">
-            {displayList.map((item) => {
-              const targetPath = resolveNotificationPath(item);
-              return (
+
+          {/* 3. Notification List */}
+          <div className="notif-list-stack">
+            {filteredNotifications.length === 0 ? (
               <div
-                key={item.id}
-                className="mka-card flex-row items-center justify-between gap-md animate-fade-in"
                 style={{
-                  padding: '14px 18px',
-                  background: item.isRead ? 'var(--pure-white)' : 'var(--soft-white)',
-                  borderLeft: item.isRead ? '1px solid var(--border-light)' : '4px solid var(--deep-plum)',
+                  background: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #F1E5EB',
+                  padding: '48px 24px',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
                 }}
               >
-                <div className="flex-row items-center gap-md" style={{ flex: 1 }}>
-                  <InitialAvatar username={item.actorUsername} initials={item.actorInitials} size={36} />
-                  <div className="flex-col gap-xs">
-                    <p className="body-text" style={{ fontSize: '14px', color: 'var(--eclipse)' }}>
-                      <NotificationItemText message={item.message} currentLanguage={currentLanguage} translateTextAsync={translateTextAsync} t={t} />
-                    </p>
-                    <RealtimeTimestamp date={item.createdAt} className="caption-text" />
-
-                  </div>
+                <div
+                  style={{
+                    width: '54px',
+                    height: '54px',
+                    borderRadius: '50%',
+                    background: '#FFF0F5',
+                    color: '#BE185D',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Sparkles size={26} strokeWidth={2.2} />
                 </div>
-
-                <div className="flex-row items-center gap-xs">
-                  {targetPath ? (
-                    <button
-                      onClick={() => {
-                        markAsRead(item.id);
-                        onNavigate(targetPath);
-                      }}
-                      className="flex-row items-center gap-xs secondary-text"
-                      style={{ fontSize: '13px', color: 'var(--deep-plum)', fontWeight: 500 }}
-                      title={item.targetType === 'MUSIC_TRACK' ? 'View Track' : 'View Post'}
-                    >
-                      <ArrowRight size={16} />
-                    </button>
-                  ) : null}
-
-                  {!item.isRead && (
-                    <button onClick={() => markAsRead(item.id)} style={{ color: 'var(--hurricane)', padding: '4px' }}>
-                      <Check size={16} />
-                    </button>
-                  )}
-
-                  <button onClick={() => deleteNotification(item.id)} style={{ color: 'var(--hurricane)', padding: '4px' }}>
-                    <Trash2 size={16} />
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#1E293B' }}>
+                  {activeCategory === 'all'
+                    ? "You're all caught up!"
+                    : `No ${activeCategory} notifications yet`}
+                </h3>
+                <p style={{ margin: 0, fontSize: '13.5px', color: '#64748B', maxWidth: '340px' }}>
+                  {activeCategory === 'all'
+                    ? 'When you receive comments, replies, or likes, they will appear here.'
+                    : 'Check back later or browse other categories to see activity.'}
+                </p>
+                {activeCategory !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveCategory('all')}
+                    style={{
+                      marginTop: '6px',
+                      padding: '8px 18px',
+                      borderRadius: '9999px',
+                      background: '#FDF2F4',
+                      border: '1px solid #F8D7E3',
+                      color: '#BE185D',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    View All Notifications
                   </button>
-                </div>
+                )}
               </div>
-              );
-            })}
+            ) : (
+              filteredNotifications.map((item) => (
+                <NotificationItemRow
+                  key={item.id}
+                  item={item}
+                  onNavigate={onNavigate}
+                  onMarkAsRead={markAsRead}
+                  onDelete={deleteNotification}
+                />
+              ))
+            )}
           </div>
-        )}
+        </section>
+
+        {/* ── RIGHT COLUMN (Column 3 of Desktop Grid) ── */}
+        <NotificationRightSidebar
+          activeCategory={activeCategory}
+          onSelectCategory={setActiveCategory}
+          categoryCounts={categoryCounts}
+          recentNotifications={notifications}
+          onNavigate={onNavigate}
+        />
       </div>
     </UserLayout>
   );
 }
+export default NotificationsPage;

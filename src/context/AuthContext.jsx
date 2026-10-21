@@ -1,14 +1,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authService } from '../services/authService.js';
 import { apiProfileService } from '../services/apiProfileService.js';
 import { apiUserService } from '../services/apiUserService.js';
 import { useToast } from './ToastContext.jsx';
+import { disconnectSocket } from '../services/socketService.js';
 import { clearMusicSession } from '../utils/musicSession.js';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const queryClient = useQueryClient();
+  const [currentUser, setCurrentUser] = useState(() => authService.getCurrentUser());
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     const storedUser = localStorage.getItem('auth_user');
     let storedUserToken = null;
@@ -46,16 +49,28 @@ export function AuthProvider({ children }) {
             return;
           }
 
+          const resolvedId = user.id || user.userId;
+
           try {
             const profileRes = await apiProfileService.getMyProfile();
+            const profileUserId = profileRes?.data?.userId || profileRes?.data?.id;
+            const finalUserId = resolvedId || profileUserId;
+
             if (profileRes && profileRes.success && profileRes.data?.username) {
               const dbUsername = profileRes.data.username.startsWith('@')
                 ? profileRes.data.username
                 : `@${profileRes.data.username}`;
-              const updatedUser = { ...user, username: dbUsername, hasProfile: true };
+              const updatedUser = {
+                ...user,
+                id: finalUserId,
+                userId: finalUserId,
+                username: dbUsername,
+                fullName: profileRes.data.fullName || user.fullName,
+                hasProfile: true,
+              };
               localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-              if (user.id) {
-                localStorage.setItem(`user_profile_${user.id}`, JSON.stringify(profileRes.data));
+              if (finalUserId) {
+                localStorage.setItem(`user_profile_${finalUserId}`, JSON.stringify(profileRes.data));
               }
               localStorage.setItem('user_profile', JSON.stringify(profileRes.data));
               setCurrentUser(updatedUser);
@@ -67,8 +82,8 @@ export function AuthProvider({ children }) {
 
           const defaultHandle = user.username
             ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
-            : `@user_${user.id || 'anonymous'}`;
-          setCurrentUser({ ...user, username: defaultHandle });
+            : `@user_${resolvedId || 'anonymous'}`;
+          setCurrentUser({ ...user, id: resolvedId, userId: resolvedId, username: defaultHandle });
         } else {
           setCurrentUser(null);
         }
@@ -85,11 +100,12 @@ export function AuthProvider({ children }) {
     try {
       const result = await authService.login(email, password, options);
       const user = result.user || result;
-      clearMusicSession(user.id);
+      const resolvedId = user.id || user.userId;
+      clearMusicSession(resolvedId);
 
       // Admins live in admin scope and have no user profile
       if (user.role === 'ADMIN') {
-        const adminUser = { ...user, username: user.username || '@admin', hasProfile: true };
+        const adminUser = { ...user, id: resolvedId, userId: resolvedId, username: user.username || '@admin', hasProfile: true };
         localStorage.setItem('auth_user', JSON.stringify(adminUser));
         localStorage.setItem('mka_admin_logged_in', 'true');
         setCurrentUser(adminUser);
@@ -100,9 +116,11 @@ export function AuthProvider({ children }) {
 
       // Try fetching database profile for regular users to resolve handle & language preference
       let dbHandle = null;
+      let dbUserId = null;
       try {
         const profileRes = await apiProfileService.getMyProfile();
         if (profileRes && profileRes.data) {
+          dbUserId = profileRes.data.userId || profileRes.data.id;
           if (profileRes.data.username) {
             dbHandle = profileRes.data.username.startsWith('@')
               ? profileRes.data.username
@@ -116,11 +134,18 @@ export function AuthProvider({ children }) {
         }
       } catch (e) {}
 
+      const finalUserId = resolvedId || dbUserId;
       const cleanHandle = dbHandle || (user.username
         ? (user.username.startsWith('@') ? user.username : `@${user.username}`)
-        : `@user_${user.id || 'anonymous'}`);
+        : `@user_${finalUserId || 'anonymous'}`);
 
-      const updatedUser = { ...user, username: cleanHandle, hasProfile: true };
+      const updatedUser = {
+        ...user,
+        id: finalUserId,
+        userId: finalUserId,
+        username: cleanHandle,
+        hasProfile: true,
+      };
       localStorage.setItem('auth_user', JSON.stringify(updatedUser));
       setCurrentUser(updatedUser);
       addToast(`Welcome back, ${cleanHandle}!`, 'success');
@@ -144,26 +169,38 @@ export function AuthProvider({ children }) {
 
   const updateProfile = async (updates) => {
     if (!currentUser) return;
+    let resData = null;
     if (apiProfileService && apiProfileService.updateProfile) {
-      await apiProfileService.updateProfile(updates);
+      const res = await apiProfileService.updateProfile(updates);
+      resData = res?.data || res;
     }
     const cleanUsername = updates.username
       ? (updates.username.startsWith('@') ? updates.username : `@${updates.username}`)
       : currentUser.username;
-    const updated = { ...currentUser, ...updates, username: cleanUsername, hasProfile: true };
+    const updated = { 
+      ...currentUser, 
+      ...updates, 
+      fullName: resData?.fullName || updates.fullName || currentUser.fullName,
+      username: cleanUsername, 
+      hasProfile: true 
+    };
     localStorage.setItem('auth_user', JSON.stringify(updated));
     if (currentUser.id) {
       localStorage.setItem(`user_profile_${currentUser.id}`, JSON.stringify(updated));
     }
     localStorage.setItem('user_profile', JSON.stringify(updated));
     setCurrentUser(updated);
+    queryClient.invalidateQueries({ queryKey: ['profile', 'me'] });
     addToast('Profile updated successfully.', 'success');
     return updated;
   };
 
   const logout = () => {
+    disconnectSocket();
     clearMusicSession(currentUser?.id);
     authService.logout();
+    queryClient.removeQueries({ queryKey: ['users'] });
+    queryClient.removeQueries({ queryKey: ['profile'] });
     setCurrentUser(null);
     setIsAdminLoggedIn(false);
     localStorage.removeItem('mka_admin_logged_in');
@@ -182,6 +219,7 @@ export function AuthProvider({ children }) {
   };
 
   const adminLogout = () => {
+    disconnectSocket();
     clearMusicSession(currentUser?.id);
     authService.logout();
     setCurrentUser(null);

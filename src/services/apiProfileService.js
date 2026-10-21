@@ -128,6 +128,45 @@ export const apiProfileService = {
     }
   },
 
+  // GET /api/profile/me/stats
+  async getMyProfileStats() {
+    try {
+      const response = await apiClient.get('/api/profile/me/stats');
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      throw err;
+    }
+  },
+
+  // GET /api/profile/me/top-topics
+  async getMyTopTopics() {
+    try {
+      const response = await apiClient.get('/api/profile/me/top-topics');
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      return { success: true, data: [] };
+    }
+  },
+
+  // GET /api/profile/me/recent-activity
+  async getMyRecentActivity() {
+    try {
+      const response = await apiClient.get('/api/profile/me/recent-activity');
+      return response.data;
+    } catch (err) {
+      if (err.response?.data) {
+        throw err.response.data;
+      }
+      return { success: true, data: [] };
+    }
+  },
+
   // DELETE /api/profile
   async deleteProfile() {
     try {

@@ -5,12 +5,13 @@ import { useComments } from '../../context/CommentContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { ReportModal } from '../reports/ReportModal.jsx';
-import { MoreHorizontal, Edit, Trash2, Flag, Heart } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Flag, Heart, Loader2 } from 'lucide-react';
 import { Dropdown, DropdownItem } from '../common/Dropdown.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { InitialAvatar } from '../profile/InitialAvatar.jsx';
 import { formatDate } from '../../utils/formatDate.js';
 import { sanitizeEncodedSymbols } from '../../services/apiMappers.js';
+import { getMediaUrl } from '../../config/env.js';
 
 const EMOJI_REACTIONS = ['😀', '❤️', '👍', '🔥', '💯', '🤝'];
 
@@ -61,9 +62,11 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
   const dynamicReplyTranslation = replyTranslationQuery.data || null;
 
   const isOwner = Boolean(
-    currentUser && (
-      (currentUser.id && reply.userId && String(currentUser.id) === String(reply.userId)) ||
-      (currentUser.username && reply.username && currentUser.username.toLowerCase() === reply.username.toLowerCase())
+    reply.isOwnComment || (
+      currentUser && (
+        (currentUser.id && reply.userId && String(currentUser.id) === String(reply.userId)) ||
+        (currentUser.username && reply.username && currentUser.username.toLowerCase() === reply.username.toLowerCase())
+      )
     )
   );
 
@@ -164,10 +167,12 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
         backgroundColor: 'transparent',
         alignItems: 'flex-start',
         width: '100%',
+        opacity: reply?.isOptimistic ? 0.75 : 1,
+        transition: 'opacity 0.2s ease',
       }}
     >
       {/* ── FLOATING HOVER EMOJI BAR ── */}
-      {isHovered && (
+      {!reply?.isOptimistic && isHovered && (
         <div
           className="animate-fade-in"
           style={{
@@ -278,71 +283,86 @@ export function ReplyCard({ reply, postId, commentId, onNavigate, onReplyTrigger
           </div>
         )}
 
+        {reply?.imageUrl && (
+          <img
+            src={getMediaUrl(reply.imageUrl)}
+            alt={t('replyImage', 'Reply attachment')}
+            style={{ display: 'block', maxWidth: '100%', maxHeight: 240, objectFit: 'contain', borderRadius: 8, marginTop: 6 }}
+          />
+        )}
+
         {/* Action / Meta row below Text */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px', fontSize: '11px', color: 'var(--hurricane)' }}>
-          <span>{formatDate(reply.createdAt)}</span>
-          
-          {reactionCount > 0 && (
-            <span style={{ fontWeight: 600 }}>{reactionCount} {reactionCount === 1 ? 'like' : 'likes'}</span>
-          )}
-
-          <button
-            type="button"
-            onClick={handleLikeToggle}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: userLiked ? 700 : 500,
-              color: userLiked ? 'var(--deep-plum)' : 'var(--hurricane)',
-              padding: 0,
-            }}
-          >
-            {userLiked ? 'Liked' : 'Like'}
-          </button>
-
-          <button
-            type="button"
-            onClick={onReplyTrigger}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '11px',
-              fontWeight: 600,
-              color: 'var(--hurricane)',
-              padding: 0,
-            }}
-          >
-            Reply
-          </button>
-
-
-          {/* More actions menu link inside action bar */}
-          <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-            <Dropdown trigger={<MoreHorizontal size={12} style={{ color: 'var(--hurricane)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} />}>
-              {isOwner ? (
-                <>
-                  <DropdownItem icon={Edit} onClick={() => setIsEditing(true)}>
-                    Edit
-                  </DropdownItem>
-                  <DropdownItem icon={Trash2} onClick={handleDelete} danger>
-                    Delete
-                  </DropdownItem>
-                </>
-              ) : (
-                <>
-                  <DropdownItem icon={Flag} onClick={() => setReportModalOpen(true)} danger>
-                    Report Reply
-                  </DropdownItem>
-                  <DropdownItem icon={Flag} onClick={() => blockUser(reply.username)} danger>
-                    Block User
-                  </DropdownItem>
-                </>
+          {reply?.isOptimistic ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--deep-plum)', fontWeight: 600 }}>
+              <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Sending...
+            </span>
+          ) : (
+            <>
+              <span>{formatDate(reply.createdAt)}</span>
+              
+              {reactionCount > 0 && (
+                <span style={{ fontWeight: 600 }}>{reactionCount} {reactionCount === 1 ? 'like' : 'likes'}</span>
               )}
-            </Dropdown>
-          </div>
+
+              <button
+                type="button"
+                onClick={handleLikeToggle}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: userLiked ? 700 : 500,
+                  color: userLiked ? 'var(--deep-plum)' : 'var(--hurricane)',
+                  padding: 0,
+                }}
+              >
+                {userLiked ? 'Liked' : 'Like'}
+              </button>
+
+              <button
+                type="button"
+                onClick={onReplyTrigger}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color: 'var(--hurricane)',
+                  padding: 0,
+                }}
+              >
+                Reply
+              </button>
+
+              {/* More actions menu link inside action bar */}
+              <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Dropdown trigger={<MoreHorizontal size={12} style={{ color: 'var(--hurricane)', cursor: 'pointer', display: 'flex', alignItems: 'center' }} />}>
+                  {isOwner ? (
+                    <>
+                      <DropdownItem icon={Edit} onClick={() => setIsEditing(true)}>
+                        Edit
+                      </DropdownItem>
+                      <DropdownItem icon={Trash2} onClick={handleDelete} danger>
+                        Delete
+                      </DropdownItem>
+                    </>
+                  ) : (
+                    <>
+                      <DropdownItem icon={Flag} onClick={() => setReportModalOpen(true)} danger>
+                        Report Reply
+                      </DropdownItem>
+                      <DropdownItem icon={Flag} onClick={() => blockUser(reply.username)} danger>
+                        Block User
+                      </DropdownItem>
+                    </>
+                  )}
+                </Dropdown>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

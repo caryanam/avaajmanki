@@ -1,61 +1,37 @@
 import React from 'react';
-import { TopNavbar } from './TopNavbar.jsx';
-import { LeftSidebar } from './LeftSidebar.jsx';
+import { AppHeader } from './AppHeader.jsx';
+import { DesktopSidebar } from './DesktopSidebar.jsx';
 import { MobileNavigation } from './MobileNavigation.jsx';
-import { MoodMusicWidget } from '../music/MoodMusicWidget.jsx';
+import '../../styles/home.css';
 
 export function UserLayout({ children, activeRoute, onNavigate, wide = true }) {
-  const currentPath = (activeRoute || window.location.pathname || '').toLowerCase();
-  const isTopicPage = Boolean(
-    currentPath.startsWith('/profile/') &&
-    currentPath !== '/profile' &&
-    currentPath !== '/profile/' &&
-    currentPath !== '/profile/me' &&
-    !currentPath.includes('/edit') &&
-    !currentPath.includes('/settings')
-  );
-
-  const [isMobile, setIsMobile] = React.useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 900 : false
-  );
-
-  React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 900);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const currentPath = (activeRoute || (typeof window !== 'undefined' ? window.location.pathname : '') || '').toLowerCase();
 
   React.useLayoutEffect(() => {
     window.scrollTo(0, 0);
-  }, [activeRoute, window.location.pathname]);
-
-
-
-  const isMusicPage = currentPath === '/music' || currentPath === '/music/';
+  }, [activeRoute, typeof window !== 'undefined' ? window.location.pathname : '']);
 
   return (
-    <div className={`app-container user-layout ${wide ? 'user-layout-wide' : ''}`}>
-      <TopNavbar activeRoute={activeRoute} onNavigate={onNavigate} />
-      <div
-        className="main-wrapper"
-        style={{
-          maxWidth: '1280px',
-          width: '100%',
-          margin: '0 auto',
-          padding: isMobile
-            ? '12px 12px 80px 12px'
-            : isTopicPage
-            ? '20px 24px 20px 28px'
-            : '20px 24px 20px 96px',
-          transition: 'padding 0.3s ease',
-          boxSizing: 'border-box',
-        }}
-      >
-        <LeftSidebar activeRoute={activeRoute} onNavigate={onNavigate} />
-        <main className={wide ? "main-content-wide" : "main-content"}>{children}</main>
+    <div className="home-page-root">
+      {/* ── 1. UNIFIED APP HEADER (Identical to Explore & Home) ── */}
+      <AppHeader onNavigate={onNavigate} />
+
+      {/* ── 2. UNIFIED DESKTOP GRID LAYOUT ── */}
+      <div className="shared-app-desktop-grid">
+        {/* Column 1: Shared Left Sidebar (Identical to Explore & Home) */}
+        <DesktopSidebar
+          activeRoute={activeRoute || currentPath}
+          onNavigate={onNavigate}
+        />
+
+        {/* Column 2: Main Content Area */}
+        <main className={wide ? 'shared-main-content-wide' : 'shared-main-content'}>
+          {children}
+        </main>
       </div>
-      <MobileNavigation activeRoute={activeRoute} onNavigate={onNavigate} />
-      {!isMusicPage && <MoodMusicWidget />}
+
+      {/* ── 3. MOBILE NAVIGATION ── */}
+      <MobileNavigation activeRoute={activeRoute || currentPath} onNavigate={onNavigate} />
     </div>
   );
 }

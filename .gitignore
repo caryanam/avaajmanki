@@ -17,6 +17,13 @@ dist-ssr
 .env.local
 .env.production
 .env.development
+.env.test
+
+# Test artefacts
+test-results/
+playwright-report/
+e2e_evidence/
+*.webm
 
 # Editor directories and files
 .vscode/*
@@ -28,3 +35,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# i18n translation cache
+.locale_translation_cache.json

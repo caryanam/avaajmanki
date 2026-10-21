@@ -1,1341 +1,1170 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { 
+  FileText, MessageSquare, Heart, Bookmark, Hash, Camera, Edit3, 
+  Trash2, MoreHorizontal, ArrowRight, Clock, Star, AlertCircle, X, Check,
+  Share2, ExternalLink, Copy, Loader2, Sparkles, User as UserIcon
+} from 'lucide-react';
 import { UserLayout } from '../../components/layout/UserLayout.jsx';
-import { InitialAvatar } from '../../components/profile/InitialAvatar.jsx';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { usePosts } from '../../context/PostContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import { USER_MODERATION_KEYS } from '../../hooks/useUserModeration.js';
 import { apiProfileService } from '../../services/apiProfileService.js';
-import { PostCard } from '../../components/posts/PostCard.jsx';
-import { Button } from '../../components/common/Button.jsx';
-import { Modal } from '../../components/common/Modal.jsx';
-import { useReports } from '../../context/ReportContext.jsx';
-import { Edit3, Trash2, Calendar, Globe, Heart, AlertTriangle, Check, Sparkles, Volume2, VolumeX, ShieldOff, Clock, Flame, MessageSquare, RefreshCw, Info, Mic, MicOff, Loader2, Upload, X, ArrowLeft, Image as ImageIcon, EyeOff, Eye, XCircle } from 'lucide-react';
+import { apiPostService } from '../../services/apiPostService.js';
+import { apiTopicService } from '../../services/apiTopicService.js';
+import { apiCommentService } from '../../services/apiCommentService.js';
 import { apiClient } from '../../services/apiClient.js';
-
-import { formatDate, RealtimeTimestamp } from '../../utils/formatDate.js';
-
-import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
-import { validateUsernameString, getSuggestedNumberVariants } from '../../utils/usernameValidation.js';
-import { EmptyState } from '../../components/common/EmptyState.jsx';
-import { useLanguage } from '../../context/LanguageContext.jsx';
-import { LanguageSelectorDropdown } from '../../components/common/LanguageSelectorDropdown.jsx';
-import { SleekCommentSidePanel } from '../../components/posts/SleekCommentSidePanel.jsx';
-import { editProfileSchema } from '../../utils/validationSchemas.js';
-import { TopicBackgroundRotator } from '../../components/topics/TopicBackgroundRotator.jsx';
-import { AnimatedTopicActivityPanel } from '../../components/topics/AnimatedTopicActivityPanel.jsx';
-import { AvatarStudioModal } from '../../components/avatar/AvatarStudioModal.jsx';
-import { AvatarThumbnail } from '../../components/avatar/AvatarThumbnail.jsx';
-import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
-import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
-import { SYSTEM_TOPICS, isTopicName } from '../../utils/topicUtils.js';
-
-
-
-const AVATAR_COLORS = [
-  { id: 'plum', hex: '#6F405F', name: 'Deep Plum' },
-  { id: 'teal', hex: '#3F7772', name: 'Deep Teal' },
-  { id: 'terracotta', hex: '#D96C3D', name: 'Terracotta' },
-  { id: 'charcoal', hex: '#2D1D15', name: 'Charcoal' },
-  { id: 'emerald', hex: '#2E7D52', name: 'Emerald' },
-  { id: 'indigo', hex: '#4A3B6F', name: 'Indigo' },
-];
+import { getMediaUrl } from '../../config/env.js';
+import { resolveTopicCover, formatTopicTitle, getCategoryLabel } from '../../components/my-topics/MyTopicRow.jsx';
+import heroProfileBanner from '../../assets/profile/hero-profile-banner.png';
+import sidebarSunsetCity from '../../assets/home/sidebar-sunset-city.jpg';
+import '../../styles/profile.css';
 
 export function ProfilePage({ username, onNavigate }) {
-  const { currentUser, updateProfile, deleteAccount, logout } = useAuth();
-  const { posts, createPost } = usePosts();
+  const { currentUser, updateProfile } = useAuth();
   const { addToast } = useToast();
-  const { mutedUsers = [], unmuteUser, blockedUsers = [], unblockUser, hiddenPosts = [], unhidePost } = useReports();
-  const { t } = useLanguage();
-  const [spokenLanguage] = useSpokenLanguage();
+  const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState('Posts');
+  // Active activity tab: 'posts' | 'comments' | 'liked' | 'topics' | 'bookmarks'
+  const [activeTab, setActiveTab] = useState('posts');
+  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
 
-  // Topic Create Post Modal State
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [postTitle, setPostTitle] = useState('');
-  const [postContent, setPostContent] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [submittingPost, setSubmittingPost] = useState(false);
-
-  const { isRecording, isTranscribing, bindMicProps } = useVoiceRecorder((transcribedText) => {
-    setPostContent((prev) => (prev ? `${prev} ${transcribedText}` : transcribedText));
-  }, spokenLanguage);
-
-
-  // Edit Profile Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editUsername, setEditUsername] = useState('');
-  const [editBio, setEditBio] = useState('');
-  const [editAvatar, setEditAvatar] = useState('');
-  const [editAvatarConfig, setEditAvatarConfig] = useState(null);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [editErrors, setEditErrors] = useState({});
-  const [editAvailabilityStatus, setEditAvailabilityStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'error'
-  const [editAvailabilityMessage, setEditAvailabilityMessage] = useState('');
-  const [editServerSuggestions, setEditServerSuggestions] = useState([]);
-  const editCheckIdRef = useRef(0);
-
-  // Avatar Studio Modal State
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  // Delete Account Modal State
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deletingProfile, setDeletingProfile] = useState(false);
-
-  // Side Panel Comments State
-  const [activeCommentsPost, setActiveCommentsPost] = useState(null);
-  const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-
-  const targetUsername = username || currentUser?.username?.replace(/^@/, '');
-  const cleanTargetUname = targetUsername?.toLowerCase().replace(/^@/, '');
-  const cleanCurrentUserUname = currentUser?.username?.toLowerCase().replace(/^@/, '');
-
-  // Route is self if username is omitted or matches the current user's profile handle
-  const isSelf = !username || (Boolean(cleanTargetUname) && Boolean(cleanCurrentUserUname) && cleanTargetUname === cleanCurrentUserUname);
-  // Route is a topic route ONLY if it is not self AND matches a valid topic/subtopic name
-  const isTopicRoute = !isSelf && Boolean(username) && isTopicName(username);
-
-  const uniqueMutedHandles = useMemo(() => {
-    const map = new Map();
-    (mutedUsers || []).forEach((u) => {
-      if (!u) return;
-      const clean = String(u).toLowerCase().replace(/^@/, '').trim();
-      if (clean && !map.has(clean)) {
-        map.set(clean, `@${clean}`);
-      }
-    });
-    return Array.from(map.values());
-  }, [mutedUsers]);
-
-  const uniqueBlockedHandles = useMemo(() => {
-    const map = new Map();
-    (blockedUsers || []).forEach((u) => {
-      if (!u) return;
-      const clean = String(u).toLowerCase().replace(/^@/, '').trim();
-      if (clean && !map.has(clean)) {
-        map.set(clean, `@${clean}`);
-      }
-    });
-    return Array.from(map.values());
-  }, [blockedUsers]);
-
-
-
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    let isMounted = true;
-    async function loadProfile() {
-      setLoadingProfile(true);
-
-      try {
-        if (isSelf) {
-          if (currentUser) {
-            setProfileData({
-              username: currentUser.username ? (currentUser.username.startsWith('@') ? currentUser.username : `@${currentUser.username}`) : '@user',
-              fullName: currentUser.fullName || 'Private User',
-              bio: currentUser.bio || 'Anonymous author on Man Ki Aavaj',
-              joinedDate: currentUser.createdAt || new Date().toISOString(),
-              avatar: currentUser.avatar || AVATAR_COLORS[0].hex,
-              avatarConfig: currentUser.avatarConfig || null,
-            });
-            setEditUsername(currentUser.username ? currentUser.username.replace(/^@/, '') : '');
-            setEditBio(currentUser.bio || '');
-            setEditAvatar(currentUser.avatar || AVATAR_COLORS[0].hex);
-            setEditAvatarConfig(currentUser.avatarConfig || null);
-          } else {
-            setProfileData({
-              username: currentUser?.username || '@user',
-              fullName: currentUser?.fullName || 'Private User',
-              bio: currentUser?.bio || 'Anonymous author on Man Ki Aavaj',
-              joinedDate: new Date().toISOString(),
-              avatar: AVATAR_COLORS[0].hex,
-            });
-            setEditUsername(currentUser?.username || '');
-            setEditBio(currentUser?.bio || '');
-          }
-        } else if (targetUsername) {
-          const isTopicChannel = isTopicName(targetUsername);
-          if (isTopicChannel) {
-            if (isMounted) {
-              setProfileData({
-                username: `#${targetUsername.toUpperCase()}`,
-                fullName: `${targetUsername.toUpperCase()} Stream`,
-                bio: 'Topic discussion stream on Man Ki Aavaj',
-                joinedDate: new Date().toISOString(),
-                avatar: AVATAR_COLORS[0].hex,
-              });
-            }
-          } else {
-
-            const res = await apiProfileService.getPublicProfile(targetUsername).catch(() => null);
-            if (isMounted && res?.data) {
-              setProfileData(res.data);
-            } else if (isMounted) {
-              setProfileData({
-                username: `@${targetUsername}`,
-                fullName: 'Public Profile',
-                bio: 'Member profile on Man Ki Aavaj',
-                joinedDate: new Date().toISOString(),
-                avatar: AVATAR_COLORS[0].hex,
-              });
-            }
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (isMounted) {
-          setLoadingProfile(false);
-          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-        }
-      }
-    }
-    loadProfile();
-    return () => { isMounted = false; };
-  }, [username, currentUser, isSelf, targetUsername]);
-
-
-  const cleanProfileUname = profileData?.username?.toLowerCase().replace(/^@/, '');
-
-  // Filter posts matching topic name or user username
-  const userPosts = posts.filter((p) => {
-
-    if (p.status !== 'PUBLISHED' && p.status !== 'ACTIVE') return false;
-
-    // If viewing a Topic Channel Route (e.g. /profile/shayari, /profile/love, /profile/cricket)
-    if (isTopicRoute) {
-      const pTopic = (p.topic || '').toLowerCase();
-      const pSubtopic = (p.subtopic || '').toLowerCase();
-      return Boolean(cleanTargetUname && (pTopic === cleanTargetUname || pSubtopic === cleanTargetUname));
-    }
-
-    // If viewing a User Profile Page (e.g. /profile/purushottam)
-    if (isSelf && currentUser?.id && (p.userId === currentUser.id || String(p.userId) === String(currentUser.id))) {
-      return true;
-    }
-    const pAuthor = (p.username || p.authorUsername || p.handle || '').toLowerCase().replace(/^@/, '');
-    const pTopic = (p.topic || '').toLowerCase();
-    const pSubtopic = (p.subtopic || '').toLowerCase();
-
-    if (cleanTargetUname && (pAuthor === cleanTargetUname || pTopic === cleanTargetUname || pSubtopic === cleanTargetUname)) {
-      return true;
-    }
-    if (cleanProfileUname && (pAuthor === cleanProfileUname || pTopic === cleanProfileUname || pSubtopic === cleanProfileUname)) {
-      return true;
-    }
-    return false;
+  // Activity data
+  const [myPosts, setMyPosts] = useState([]);
+  const [myComments, setMyComments] = useState([]);
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [likedPosts, setLikedPosts] = useState([]);
+  const [myTopics, setMyTopics] = useState([]);
+  const [allTopics, setAllTopics] = useState([]);
+  const [topTopics, setTopTopics] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [statsData, setStatsData] = useState({
+    postsCount: 0,
+    commentsCount: 0,
+    likesCount: 0,
+    bookmarksCount: 0,
   });
 
+  // Modals state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatarPreview, setEditAvatarPreview] = useState(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  const lastPostTime = userPosts.length > 0 && userPosts[0].createdAt
-    ? formatDate(userPosts[0].createdAt)
-    : 'Recently updated';
+  // Delete Post Confirmation state
+  const [postToDelete, setPostToDelete] = useState(null);
+  const [isDeletingPost, setIsDeletingPost] = useState(false);
 
-  const getDaysLeftForChange = () => {
-    const userId = currentUser?.id || currentUser?.userId;
-    const lastChangeStr = currentUser?.lastUsernameChangeDate || (userId ? localStorage.getItem(`last_username_change_${userId}`) : null);
-    if (!lastChangeStr) return 0;
-    const lastChange = new Date(lastChangeStr).getTime();
-    if (isNaN(lastChange)) return 0;
-    const elapsedDays = (Date.now() - lastChange) / (1000 * 60 * 60 * 24);
-    const daysLeft = Math.ceil(14 - elapsedDays);
-    return daysLeft > 0 ? daysLeft : 0;
-  };
+  // Active 3-dots menu for posts
+  const [openMenuPostId, setOpenMenuPostId] = useState(null);
+  const [failedImages, setFailedImages] = useState({});
+  const fileInputRef = useRef(null);
 
-  const daysLeftForChange = getDaysLeftForChange();
-
-  // Real-time Debounced Availability Check for Profile Edit Modal
-  useEffect(() => {
-    if (!isEditModalOpen) {
-      setEditAvailabilityStatus('idle');
-      setEditAvailabilityMessage('');
-      setEditServerSuggestions([]);
-      return;
-    }
-
-    const cleanNew = editUsername ? editUsername.trim().replace(/^@/, '') : '';
-    const cleanOld = currentUser?.username ? currentUser.username.trim().replace(/^@/, '') : '';
-
-    if (!cleanNew) {
-      setEditAvailabilityStatus('idle');
-      setEditAvailabilityMessage('');
-      setEditServerSuggestions([]);
-      return;
-    }
-
-    if (cleanNew.toLowerCase() === cleanOld.toLowerCase()) {
-      setEditAvailabilityStatus('available');
-      setEditAvailabilityMessage('Your current handle');
-      setEditServerSuggestions([]);
-      return;
-    }
-
-    const localErr = validateUsernameString(cleanNew, currentUser?.fullName);
-    if (localErr) {
-      setEditAvailabilityStatus('invalid');
-      setEditAvailabilityMessage(localErr);
-      setEditServerSuggestions([]);
-      return;
-    }
-
-    const checkId = ++editCheckIdRef.current;
-    setEditAvailabilityStatus('checking');
-    setEditAvailabilityMessage('Checking username...');
-
-    const timer = setTimeout(async () => {
+  // Fetch all profile and personal activity data from authenticated endpoints
+  const fetchAllProfileData = useCallback(async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch authenticated profile details
       try {
-        const res = await apiProfileService.checkUsername(cleanNew);
-        if (editCheckIdRef.current !== checkId) return;
-
-        if (res?.data?.available) {
-          setEditAvailabilityStatus('available');
-          setEditAvailabilityMessage('✓ Username available');
-          setEditServerSuggestions([]);
-        } else {
-          setEditAvailabilityStatus('taken');
-          setEditAvailabilityMessage(res?.data?.message ? `❌ ${res.data.message}` : '❌ Username already taken');
-          setEditServerSuggestions(res?.data?.suggestions || []);
+        const profRes = await queryClient.ensureQueryData({
+          queryKey: [...USER_MODERATION_KEYS.myProfile, currentUser?.id || 'me'],
+          queryFn: () => apiProfileService.getMyProfile(),
+          staleTime: 5 * 60 * 1000,
+        });
+        const profileObj = profRes?.data || profRes;
+        if (profileObj) {
+          setProfileData(profileObj);
+          setEditFullName(profileObj.fullName || currentUser?.fullName || currentUser?.name || profileObj.username || '');
+          setEditBio((profileObj.bio || '').replace(/\?\?+$/, '❤️'));
         }
-      } catch (err) {
-        if (editCheckIdRef.current !== checkId) return;
-        setEditAvailabilityStatus('error');
-        setEditAvailabilityMessage(err?.message || 'Unable to check username availability.');
-        setEditServerSuggestions([]);
+      } catch (profErr) {
+        console.warn('[ProfilePage] getMyProfile notice:', profErr);
       }
-    }, 350);
 
-    return () => clearTimeout(timer);
-  }, [editUsername, isEditModalOpen, currentUser?.username, currentUser?.fullName]);
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-
-    const result = editProfileSchema.safeParse({
-      username: editUsername,
-      bio: editBio,
-    });
-
-    if (!result.success) {
-      const fieldErrors = {};
-      result.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          fieldErrors[issue.path[0]] = issue.message;
+      // 2. Fetch authenticated statistics
+      try {
+        const statsRes = await apiProfileService.getMyProfileStats();
+        if (statsRes?.data) {
+          setStatsData(statsRes.data);
         }
-      });
-      setEditErrors(fieldErrors);
+      } catch (statsErr) {
+        console.warn('[ProfilePage] Stats fetch notice:', statsErr);
+      }
+
+      // 3. Fetch authenticated user posts
+      try {
+        const postsRes = await apiPostService.getMyPosts({ page: 0, size: 20 });
+        const postItems = postsRes?.data?.content || postsRes?.content || (Array.isArray(postsRes?.data) ? postsRes.data : []);
+        setMyPosts(postItems);
+      } catch (postErr) {
+        console.warn('[ProfilePage] My posts fetch notice:', postErr);
+      }
+
+      // 4. Fetch authenticated user comments and replies
+      try {
+        const commRes = await apiCommentService.getMyComments({ page: 0, size: 20 });
+        const commItems = commRes?.data?.content || commRes?.content || (Array.isArray(commRes?.data) ? commRes.data : []);
+        setMyComments(commItems);
+      } catch (commErr) {
+        console.warn('[ProfilePage] Comments fetch notice:', commErr);
+      }
+
+      // 5. Fetch posts liked by authenticated user
+      try {
+        const likedRes = await apiPostService.getLikedPosts({ page: 0, size: 20 });
+        const likedItems = likedRes?.data?.content || likedRes?.content || (Array.isArray(likedRes?.data) ? likedRes.data : []);
+        setLikedPosts(likedItems);
+      } catch (likedErr) {
+        console.warn('[ProfilePage] Liked posts fetch notice:', likedErr);
+      }
+
+      // 6. Fetch saved posts
+      try {
+        const savedRes = await apiPostService.getSavedPosts({ page: 0, size: 20 });
+        const savedItems = savedRes?.data?.content || savedRes?.content || (Array.isArray(savedRes?.data) ? savedRes.data : []);
+        setSavedPosts(savedItems);
+      } catch (savedErr) {
+        console.warn('[ProfilePage] Saved posts notice:', savedErr);
+      }
+
+      // 7. Fetch topics created by the user
+      try {
+        const topicsRes = await apiTopicService.getMyTopics({ page: 0, size: 20 });
+        const topicItems = Array.isArray(topicsRes) ? topicsRes : (topicsRes?.data || topicsRes?.content || []);
+        setMyTopics(topicItems);
+      } catch (topicErr) {
+        console.warn('[ProfilePage] Topics fetch notice:', topicErr);
+      }
+
+      // 8. Fetch user top topics by authored post count
+      try {
+        const topRes = await apiProfileService.getMyTopTopics();
+        setTopTopics(topRes?.data || []);
+      } catch (topErr) {
+        console.warn('[ProfilePage] Top topics fetch notice:', topErr);
+      }
+
+      // 9. Fetch user recent personal activity
+      try {
+        const actRes = await apiProfileService.getMyRecentActivity();
+        setRecentActivities(actRes?.data || []);
+      } catch (actErr) {
+        console.warn('[ProfilePage] Recent activity fetch notice:', actErr);
+      }
+    } catch (err) {
+      console.error('[ProfilePage] Failed to load profile data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.username, currentUser?.id, currentUser?.fullName, currentUser?.name]);
+
+  useEffect(() => {
+    fetchAllProfileData();
+  }, [fetchAllProfileData]);
+
+  // Handle avatar upload via file picker
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Image file too large. Please select an image under 5MB.', 'error');
       return;
     }
-
-    const cleanNewUsername = editUsername.trim().replace(/^@/, '');
-    const cleanOldUsername = currentUser?.username ? currentUser.username.replace(/^@/, '') : '';
-
-    // Enforce 14-Day Username Change Timer Constraint
-    if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase()) {
-      if (daysLeftForChange > 0) {
-        const errMsg = `Username can only be changed once every 14 days. Please wait ${daysLeftForChange} day(s).`;
-        setEditErrors({ username: errMsg });
-        addToast(errMsg, 'error');
-        return;
-      }
-      if (editAvailabilityStatus === 'taken') {
-        const errMsg = 'Username already taken. Please choose another.';
-        setEditErrors({ username: errMsg });
-        addToast(errMsg, 'error');
-        return;
-      }
-      if (editAvailabilityStatus === 'checking') {
-        addToast('Please wait while we verify handle availability.', 'info');
-        return;
-      }
-    }
-
-    setEditErrors({});
-    setSavingEdit(true);
 
     try {
-      const updatedUser = await updateProfile({
-        username: cleanNewUsername,
-        bio: editBio.trim(),
-        avatar: editAvatar,
-        avatarConfig: editAvatarConfig,
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiClient.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase()) {
-        const userId = currentUser?.id || currentUser?.userId || 'me';
-        localStorage.setItem(`last_username_change_${userId}`, new Date().toISOString());
+      const uploadedUrl = res.data?.data?.imageUrl || res.data?.imageUrl;
+      if (!uploadedUrl) {
+        throw new Error('Upload failed. No image URL returned.');
       }
 
-      const formattedHandle = `@${updatedUser.username ? updatedUser.username.replace(/^@/, '') : cleanNewUsername}`;
+      // Update profile backend
+      await apiProfileService.updateProfile({
+        avatar: uploadedUrl,
+        username: profileData?.username || currentUser?.username?.replace(/^@/, ''),
+        bio: profileData?.bio || currentUser?.bio || '',
+      });
+
+      // Synchronize AuthContext
+      if (updateProfile) {
+        await updateProfile({ avatar: uploadedUrl });
+      }
+
+      setProfileData((prev) => ({ ...prev, avatar: uploadedUrl }));
+      addToast('Profile picture updated successfully!', 'success');
+    } catch (err) {
+      console.error('[ProfilePage] Avatar upload error:', err);
+      addToast(err?.message || 'Failed to upload profile picture', 'error');
+    }
+  };
+
+  // Handle Edit Profile Save
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setIsSavingProfile(true);
+    try {
+      const updates = {
+        fullName: editFullName.trim(),
+        username: profileData?.username || currentUser?.username?.replace(/^@/, ''),
+        bio: editBio.trim(),
+        avatar: editAvatarPreview || profileData?.avatar || currentUser?.avatar || '',
+      };
+
+      const res = await apiProfileService.updateProfile(updates);
+      const resData = res?.data || {};
+
+      if (updateProfile) {
+        await updateProfile({
+          ...updates,
+          fullName: resData.fullName || editFullName.trim(),
+        });
+      }
 
       setProfileData((prev) => ({
         ...prev,
-        username: formattedHandle,
-        bio: updatedUser.bio,
-        avatar: updatedUser.avatar,
-        avatarConfig: updatedUser.avatarConfig,
+        fullName: resData.fullName || editFullName.trim(),
+        bio: editBio.trim(),
+        avatar: updates.avatar,
       }));
 
       setIsEditModalOpen(false);
-      addToast('Profile details updated successfully.', 'success');
-
-      // Update UI immediately & navigate to new profile route without manual page refresh
-      if (cleanNewUsername.toLowerCase() !== cleanOldUsername.toLowerCase() && onNavigate) {
-        onNavigate(`/profile/${cleanNewUsername}`);
-      }
+      addToast('Profile updated successfully!', 'success');
     } catch (err) {
-      console.error(err);
-      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update profile.';
-      if (err?.response?.status === 409 || errMsg.toLowerCase().includes('already taken') || errMsg.toLowerCase().includes('already exists')) {
-        setEditErrors((prev) => ({ ...prev, username: 'Username already taken. Please choose another.' }));
-        setEditAvailabilityStatus('taken');
-        setEditAvailabilityMessage('❌ Username already taken');
-      }
-      addToast(errMsg, 'error');
+      console.error('[ProfilePage] Profile update error:', err);
+      addToast(err?.message || 'Failed to update profile', 'error');
     } finally {
-      setSavingEdit(false);
+      setIsSavingProfile(false);
     }
   };
 
-  const handleDeleteProfile = async () => {
-    setDeletingProfile(true);
+  // Handle Post Deletion Workflow
+  const handleConfirmDeletePost = async () => {
+    if (!postToDelete) return;
+    setIsDeletingPost(true);
+    const deleteTargetId = postToDelete.id || postToDelete.postId;
     try {
-      await deleteAccount();
-      addToast('Profile deleted successfully.', 'success');
-      onNavigate('/login');
+      await apiPostService.deletePost(deleteTargetId);
+      // Remove from myPosts and decrement real count
+      setMyPosts((prev) => prev.filter((p) => (p.id || p.postId) !== deleteTargetId));
+      setStatsData((prev) => ({ ...prev, postsCount: Math.max(0, prev.postsCount - 1) }));
+      setPostToDelete(null);
+      setOpenMenuPostId(null);
+      addToast('Post deleted successfully', 'success');
     } catch (err) {
-      console.error(err);
-      addToast('Profile deleted.', 'info');
-      logout();
-      onNavigate('/login');
+      console.error('[ProfilePage] Delete post error:', err);
+      addToast(err?.message || 'Failed to delete post. Please try again.', 'error');
     } finally {
-      setDeletingProfile(false);
-      setIsDeleteModalOpen(false);
+      setIsDeletingPost(false);
+    }
+  };
+
+  // Toggle Save / Bookmark
+  const handleToggleSavePost = async (post) => {
+    const targetId = post.id || post.postId;
+    try {
+      const isCurrentlySaved = savedPosts.some((p) => (p.id || p.postId) === targetId);
+      if (isCurrentlySaved) {
+        await apiPostService.unsavePost(targetId);
+        setSavedPosts((prev) => prev.filter((p) => (p.id || p.postId) !== targetId));
+        setStatsData((prev) => ({ ...prev, bookmarksCount: Math.max(0, prev.bookmarksCount - 1) }));
+        addToast('Post removed from bookmarks', 'info');
+      } else {
+        await apiPostService.savePost(targetId);
+        setSavedPosts((prev) => [{ ...post, isSaved: true }, ...prev]);
+        setStatsData((prev) => ({ ...prev, bookmarksCount: prev.bookmarksCount + 1 }));
+        addToast('Post saved to bookmarks!', 'success');
+      }
+    } catch (err) {
+      addToast('Bookmark action failed', 'error');
+    }
+  };
+
+  // Toggle Like Post
+  const handleToggleLikePost = async (post) => {
+    const targetId = post.id || post.postId;
+    try {
+      const isLiked = post.isLikedByCurrentUser || likedPosts.some((p) => (p.id || p.postId) === targetId);
+      if (isLiked) {
+        await apiPostService.unlikePost(targetId);
+        setLikedPosts((prev) => prev.filter((p) => (p.id || p.postId) !== targetId));
+        setMyPosts((prev) =>
+          prev.map((p) => ((p.id || p.postId) === targetId ? { ...p, isLikedByCurrentUser: false, likeCount: Math.max(0, (p.likeCount || 0) - 1) } : p))
+        );
+        setStatsData((prev) => ({ ...prev, likesCount: Math.max(0, prev.likesCount - 1) }));
+        addToast('Post removed from Liked', 'info');
+      } else {
+        await apiPostService.likePost(targetId);
+        setLikedPosts((prev) => [{ ...post, isLikedByCurrentUser: true }, ...prev]);
+        setMyPosts((prev) =>
+          prev.map((p) => ((p.id || p.postId) === targetId ? { ...p, isLikedByCurrentUser: true, likeCount: (p.likeCount || 0) + 1 } : p))
+        );
+        setStatsData((prev) => ({ ...prev, likesCount: prev.likesCount + 1 }));
+        addToast('Post added to Liked!', 'success');
+      }
+    } catch {
+      addToast('Like action failed', 'error');
+    }
+  };
+
+  // Real authenticated statistics computation (Zero synthetic multipliers or fake fallbacks)
+  const stats = useMemo(() => {
+    const formatCount = (num) => {
+      if (num === null || num === undefined) return '0';
+      if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+      return String(num);
+    };
+
+    return {
+      postsCount: formatCount(statsData.postsCount),
+      commentsCount: formatCount(statsData.commentsCount),
+      likesCount: formatCount(statsData.likesCount),
+      bookmarksCount: formatCount(statsData.bookmarksCount),
+    };
+  }, [statsData]);
+
+  // User identity details
+  const displayName = currentUser?.fullName || currentUser?.name || 'Aarav';
+  const handle = `@${(profileData?.username || currentUser?.username || 'aarav').replace(/^@/, '')}`;
+  const rawBio = profileData?.bio || currentUser?.bio || 'Just a person who believes in better conversations, kinder people and a more open world. Here to listen, share and grow. ❤️';
+  const bio = (rawBio || '').replace(/\?\?+$/, '❤️');
+
+  // Resolve user avatar image URL
+  const rawAvatar = profileData?.avatar || currentUser?.avatar || currentUser?.avatarUrl;
+  const resolvedAvatar = (rawAvatar && !rawAvatar.startsWith('#'))
+    ? getMediaUrl(rawAvatar)
+    : sidebarSunsetCity;
+
+  // Format relative timestamp
+  const formatTimeAgo = (dateStr) => {
+    if (!dateStr) return 'recently';
+    try {
+      const diffMs = Date.now() - new Date(dateStr).getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours < 1) return 'just now';
+      if (diffHours < 24) return `${diffHours} hours ago`;
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      const diffWeeks = Math.floor(diffDays / 7);
+      return `${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago`;
+    } catch {
+      return 'recently';
     }
   };
 
   return (
-    <UserLayout activeRoute={`/profile/${targetUsername}`} onNavigate={onNavigate} wide={true}>
-      <TopicBackgroundRotator topicName={targetUsername || 'GENERAL'}>
-        <div className="flex-col gap-md" style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-
-          {/* ── BACK TO HOME NAVIGATION BUTTON ── */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button
-              type="button"
-              onClick={() => onNavigate && onNavigate('/home')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 18px',
-                borderRadius: '20px',
-                background: 'rgba(255, 255, 255, 0.95)',
-                color: '#6F405F',
-                border: '1.5px solid rgba(111, 64, 95, 0.25)',
-                fontSize: '13px',
-                fontWeight: 800,
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(45,29,21,0.08)',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateX(-3px)';
-                e.currentTarget.style.background = '#FFFFFF';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateX(0)';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
-              }}
-            >
-              <ArrowLeft size={16} color="#6F405F" />
-              <span>{t('backToHome', '← Back to Home')}</span>
-            </button>
-          </div>
-
-          {/* ── 1. TOPIC OR USER PROFILE DETAIL BANNER ── */}
-          <div
-
-            style={{
-              padding: '24px 20px',
-              backgroundColor: '#3D2B24',
-              color: '#FFFFFF',
-              borderRadius: '16px',
-              border: '1px solid #4D3830',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '16px',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
-              width: '100%',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <InitialAvatar
-                username={targetUsername || 'USER'}
-                avatarConfig={profileData?.avatarConfig}
-                size={68}
+    <UserLayout activeRoute="/profile" onNavigate={onNavigate} wide={true}>
+      <div className="profile-page-grid">
+        {/* ── LEFT / CENTER STREAM ── */}
+        <section className="profile-center-stream" aria-label="Profile and Activity Stream">
+          {/* 1. Profile Hero Card */}
+          <div className="profile-hero-card">
+            {/* Cinematic Sunset Banner */}
+            <div className="profile-cover-wrap">
+              <img
+                src={heroProfileBanner}
+                alt="Profile cover banner"
+                className="profile-cover-img"
               />
+              <div className="profile-cover-overlay" />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <h1 style={{ fontSize: '26px', fontWeight: 800, margin: 0, color: '#FFFFFF', letterSpacing: '0.02em' }}>
-                    {isTopicRoute
-                      ? `#${t((targetUsername || 'GENERAL').toUpperCase(), (targetUsername || 'GENERAL').toUpperCase())}`
-                      : (targetUsername ? `@${targetUsername.replace(/^@/, '')}` : '@user')}
-                  </h1>
-                  <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: isTopicRoute ? '#D96C3D' : '#3F7772', color: '#FFFFFF', textTransform: 'uppercase' }}>
-                    {isTopicRoute ? t('trendingTopic', 'Trending Topic') : t('authorProfile', 'Author Profile')}
-                  </span>
+              {/* Decorative flourish text in upper-right of banner */}
+              <div className="profile-cover-flourish">
+                <div className="profile-flourish-glow" />
+                <div className="profile-flourish-content">
+                  <span>Your</span>
+                  <span>Thoughts</span>
+                  <span>Matter</span>
+                  <span>Here <span className="profile-flourish-heart">♡</span></span>
                 </div>
+              </div>
 
-                {!isTopicRoute && profileData?.bio && (
-                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', margin: 0 }}>
-                    {profileData.bio}
-                  </p>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '13px', color: 'rgba(255,255,255,0.92)', marginTop: '2px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Clock size={14} />
-                    <span>{t('lastPost', 'Last post')} {lastPostTime}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <Flame size={14} />
-                    <span>{userPosts.length} {t('thoughtsShared', 'Thoughts shared')}</span>
-                  </div>
-                </div>
+              {/* Elegant Curved Shoulder SVG Transition at bottom of banner */}
+              <div className="profile-cover-curve-svg-wrap">
+                <svg
+                  viewBox="0 0 1000 48"
+                  preserveAspectRatio="none"
+                  className="profile-cover-curve-svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M 0,48 L 0,0 L 530,0 C 565,0 585,46 625,46 L 1000,46 L 1000,48 Z"
+                    fill="#FFFFFF"
+                  />
+                </svg>
               </div>
             </div>
 
-            {/* Action Buttons: Topic Create button for Topics, Edit/Mute buttons for User Profiles */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {isTopicRoute ? null : (
-                isSelf ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <LanguageSelectorDropdown compact={false} />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditUsername(currentUser?.username ? currentUser.username.replace(/^@/, '') : '');
-                        setEditBio(currentUser?.bio || '');
-                        setEditErrors({});
-                        setEditAvailabilityStatus('available');
-                        setEditAvailabilityMessage('Your current handle');
-                        setIsEditModalOpen(true);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 18px',
-                        borderRadius: '20px',
-                        background: '#FFFFFF',
-                        color: '#6F405F',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        border: 'none',
-                        boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s ease',
-                      }}
-                    >
-                      <Edit3 size={15} />
-                      <span>{t('editProfile', 'Edit Profile')}</span>
-                    </button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => addToast(`Muted posts from @${targetUsername}`, 'info')}
-                    style={{ borderColor: 'rgba(255,255,255,0.4)', color: '#FFF' }}
+            {/* Overlapping Circular Avatar */}
+            <div className="profile-avatar-container">
+              <img
+                src={resolvedAvatar}
+                alt={displayName}
+                className="profile-avatar-img"
+                onError={(e) => {
+                  e.currentTarget.src = sidebarSunsetCity;
+                }}
+              />
+              <button
+                type="button"
+                className="profile-camera-badge-btn"
+                title="Change profile picture"
+                aria-label="Upload profile photo"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Camera size={15} strokeWidth={2.4} />
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                accept="image/png,image/jpeg,image/webp"
+                onChange={handleAvatarFileChange}
+              />
+            </div>
+
+            {/* White Lower Profile Panel */}
+            <div className="profile-hero-lower">
+              {/* Left: User Identity Info */}
+              <div className="profile-identity-info">
+                <div className="profile-name-row">
+                  <h1 className="profile-display-name">{displayName}</h1>
+                  <button
+                    type="button"
+                    className="profile-edit-btn"
+                    onClick={() => setIsEditModalOpen(true)}
                   >
-                    Mute Handle
-                  </Button>
-                )
-              )}
+                    <Edit3 size={13} strokeWidth={2.2} />
+                    <span>Edit Profile</span>
+                  </button>
+                </div>
+                <span className="profile-handle">{handle}</span>
+                <p className="profile-bio-text">{bio}</p>
+              </div>
+
+              {/* Right: Four Compact Statistics Grouped Horizontally */}
+              <div className="profile-stats-card">
+                <div className="profile-stat-col">
+                  <FileText size={18} strokeWidth={2.2} style={{ color: '#E11D48' }} />
+                  <span className="profile-stat-value">{stats.postsCount}</span>
+                  <span className="profile-stat-label">Posts</span>
+                </div>
+
+                <div className="profile-stat-col">
+                  <MessageSquare size={18} strokeWidth={2.2} style={{ color: '#475569' }} />
+                  <span className="profile-stat-value">{stats.commentsCount}</span>
+                  <span className="profile-stat-label">Comments</span>
+                </div>
+
+                <div className="profile-stat-col">
+                  <Heart size={18} strokeWidth={2.2} style={{ color: '#E11D48' }} />
+                  <span className="profile-stat-value">{stats.likesCount}</span>
+                  <span className="profile-stat-label">Likes</span>
+                </div>
+
+                <div className="profile-stat-col">
+                  <Bookmark size={18} strokeWidth={2.2} style={{ color: '#475569' }} />
+                  <span className="profile-stat-value">{stats.bookmarksCount}</span>
+                  <span className="profile-stat-label">Bookmarks</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ── 2. FULL-WIDTH POSTS FEED (RIGHT SIDE COMMENT BOX & EXTRA TOPICS STREAM REMOVED) ── */}
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Navigation Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '8px',
-                borderBottom: '1.5px solid #EDE8E6',
-                paddingBottom: '2px',
-                height: '38px',
-                alignItems: 'center',
-              }}
+          {/* 2. Five Activity Tabs */}
+          <nav className="profile-tabs-bar" aria-label="Profile Activity Tabs">
+            <button
+              type="button"
+              className={`profile-tab-button ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('posts')}
             >
-              <button
-                onClick={() => setActiveTab('Posts')}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  fontWeight: activeTab === 'Posts' ? 700 : 500,
-                  color: activeTab === 'Posts' ? '#6F405F' : '#6E625F',
-                  borderTop: 'none',
-                  borderLeft: 'none',
-                  borderRight: 'none',
-                  borderBottom: activeTab === 'Posts' ? '2.5px solid #6F405F' : '2.5px solid transparent',
-                  background: 'none',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                {isTopicRoute ? `${t('topicPosts', 'Topic Posts')} (${userPosts.length})` : `${t('myPosts', 'User Thoughts')} (${userPosts.length})`}
-              </button>
+              <FileText size={15} strokeWidth={2.2} />
+              <span>Posts</span>
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button ${activeTab === 'comments' ? 'active' : ''}`}
+              onClick={() => setActiveTab('comments')}
+            >
+              <MessageSquare size={15} strokeWidth={2.2} />
+              <span>Comments</span>
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button ${activeTab === 'liked' ? 'active' : ''}`}
+              onClick={() => setActiveTab('liked')}
+            >
+              <Heart size={15} strokeWidth={2.2} />
+              <span>Liked</span>
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button ${activeTab === 'topics' ? 'active' : ''}`}
+              onClick={() => setActiveTab('topics')}
+            >
+              <Hash size={15} strokeWidth={2.2} />
+              <span>My Topics</span>
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button ${activeTab === 'bookmarks' ? 'active' : ''}`}
+              onClick={() => setActiveTab('bookmarks')}
+            >
+              <Bookmark size={15} strokeWidth={2.2} />
+              <span>Bookmarks</span>
+            </button>
+          </nav>
 
-              {isSelf && (
-                <>
-                  <button
-                    onClick={() => setActiveTab('Muted')}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      fontWeight: activeTab === 'Muted' ? 700 : 500,
-                      color: activeTab === 'Muted' ? '#6F405F' : '#6E625F',
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      borderRight: 'none',
-                      borderBottom: activeTab === 'Muted' ? '2.5px solid #6F405F' : '2.5px solid transparent',
-                      background: 'none',
-                      outline: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {t('mutedHandles', 'Muted Handles')} ({uniqueMutedHandles.length})
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('Blocked')}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      fontWeight: activeTab === 'Blocked' ? 700 : 500,
-                      color: activeTab === 'Blocked' ? '#6F405F' : '#6E625F',
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      borderRight: 'none',
-                      borderBottom: activeTab === 'Blocked' ? '2.5px solid #6F405F' : '2.5px solid transparent',
-                      background: 'none',
-                      outline: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {t('blockedUsers', 'Blocked Users')} ({uniqueBlockedHandles.length})
-                  </button>
-
+          {/* 3. Stream Content Area */}
+          {activeTab === 'posts' && (
+            <div className="profile-posts-list">
+              {loading ? (
+                <div className="profile-empty-state-box">
+                  <Loader2 size={30} className="spin-animation" style={{ color: '#E11D48' }} />
+                </div>
+              ) : myPosts.length === 0 ? (
+                <div className="profile-empty-state-box">
+                  <FileText size={32} strokeWidth={2} style={{ color: '#94A3B8' }} />
+                  <h3 className="profile-empty-title">You haven't shared any posts yet.</h3>
+                  <p className="profile-empty-desc">
+                    Express your genuine thoughts anonymously and connect with compassionate people.
+                  </p>
                   <button
                     type="button"
-                    onClick={() => setActiveTab('Hidden')}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '14px',
-                      fontWeight: activeTab === 'Hidden' ? 700 : 500,
-                      color: activeTab === 'Hidden' ? '#6F405F' : '#6E625F',
-                      borderTop: 'none',
-                      borderLeft: 'none',
-                      borderRight: 'none',
-                      borderBottom: activeTab === 'Hidden' ? '2.5px solid #6F405F' : '2.5px solid transparent',
-                      background: 'none',
-                      outline: 'none',
-                      cursor: 'pointer',
-                    }}
+                    className="profile-modal-submit-btn"
+                    onClick={() => onNavigate('/create-post')}
                   >
-                    {t('hiddenThoughts', 'Hidden Thoughts')} ({hiddenPosts.length})
+                    Create Post
                   </button>
-                </>
-              )}
-
-          </div>
-
-          {/* Tab Content: Posts Stream */}
-          {activeTab === 'Posts' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-              {userPosts.length === 0 ? (
-                <EmptyState
-                  title={t('noThoughtsTopicYet', 'No thoughts under this topic yet')}
-                  description={t('beFirstAuthor', 'Be the first author to post a thought under this topic category.')}
-                  icon={Calendar}
-                />
+                </div>
               ) : (
-                userPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    onNavigate={onNavigate}
-                    onToggleComments={() => {
-                      if (activeCommentsPost?.id === post.id) setActiveCommentsPost(null);
-                      else setActiveCommentsPost(post);
-                    }}
-                    activeCommentsPostId={activeCommentsPost?.id}
-                  />
+                myPosts.map((post, idx) => {
+                  const resolvedPostId = post.id || post.postId || `post-${idx}`;
+                  const isSaved = savedPosts.some((p) => (p.id || p.postId) === resolvedPostId);
+                  const isLiked = post.isLikedByCurrentUser || likedPosts.some((p) => (p.id || p.postId) === resolvedPostId);
+                  const hasImage = Boolean(post.imageUrl);
+                  const postImage = hasImage ? getMediaUrl(post.imageUrl) : null;
+                  const topicTag = post.topic ? `#${post.topic.replace(/_/g, '')}` : '#Community';
+                  const isMenuOpen = Boolean(openMenuPostId) && openMenuPostId === resolvedPostId;
+
+                  return (
+                    <article key={resolvedPostId} className="profile-post-card">
+                      {/* Post Header */}
+                      <div className="profile-post-header">
+                        <div className="profile-post-author-wrap">
+                          <img
+                            src={resolvedAvatar}
+                            alt={displayName}
+                            className="profile-post-avatar-thumb"
+                          />
+                          <div className="profile-post-author-meta">
+                            <span className="profile-post-author-name">{displayName}</span>
+                            <span className="profile-post-author-handle">{handle}</span>
+                            <span className="profile-post-bullet">·</span>
+                            <span className="profile-post-time">{formatTimeAgo(post.createdAt)}</span>
+                          </div>
+                        </div>
+
+                        {/* Three-Dot Menu */}
+                        <div className="profile-post-dots-menu-wrap">
+                          <button
+                            type="button"
+                            className="profile-post-dots-btn"
+                            aria-label="Post options"
+                            onClick={() => setOpenMenuPostId(isMenuOpen ? null : resolvedPostId)}
+                          >
+                            <MoreHorizontal size={18} />
+                          </button>
+
+                          {isMenuOpen && (
+                            <div className="profile-post-dropdown-menu">
+                              <button
+                                type="button"
+                                className="profile-post-dropdown-item"
+                                onClick={() => {
+                                  setOpenMenuPostId(null);
+                                  onNavigate(`/topic/${post.topic || 'GENERAL'}/discussion/${resolvedPostId}`);
+                                }}
+                              >
+                                <ExternalLink size={14} />
+                                <span>View Post</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="profile-post-dropdown-item danger"
+                                onClick={() => {
+                                  setOpenMenuPostId(null);
+                                  setPostToDelete({ ...post, id: resolvedPostId });
+                                }}
+                              >
+                                <Trash2 size={14} />
+                                <span>Delete Post</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Post Body Row */}
+                      <div className="profile-post-body-row">
+                        <div className="profile-post-text-side">
+                          <span className="profile-post-topic-tag">{topicTag}</span>
+                          <p className="profile-post-text-content">
+                            {post.content || post.originalContent || post.title || 'Shared a thought with the community.'}
+                          </p>
+
+                          {/* Footer Actions */}
+                          <div className="profile-post-footer">
+                            <button
+                              type="button"
+                              className={`profile-post-action-btn ${isLiked ? 'liked' : ''}`}
+                              onClick={() => handleToggleLikePost(post)}
+                            >
+                              <Heart size={15} fill={isLiked ? '#E11D48' : 'none'} color={isLiked ? '#E11D48' : 'currentColor'} />
+                              <span>{post.likeCount || 0}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="profile-post-action-btn"
+                              onClick={() => onNavigate(`/topic/${post.topic || 'GENERAL'}/discussion/${resolvedPostId}`)}
+                            >
+                              <MessageSquare size={15} />
+                              <span>{post.commentCount || 0}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className={`profile-post-action-btn ${isSaved ? 'saved' : ''}`}
+                              onClick={() => handleToggleSavePost(post)}
+                            >
+                              <Bookmark size={15} fill={isSaved ? '#0284C7' : 'none'} color={isSaved ? '#0284C7' : 'currentColor'} />
+                              <span>{isSaved ? 'Saved' : 'Save'}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Optional Right-Aligned Post Thumbnail */}
+                        {hasImage && !failedImages[resolvedPostId] && (
+                          <div className="profile-post-image-side">
+                            <img
+                              src={postImage}
+                              alt="Post media attachment"
+                              className="profile-post-thumb-img"
+                              loading="lazy"
+                              onError={() => {
+                                setFailedImages((prev) => ({ ...prev, [resolvedPostId]: true }));
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {activeTab === 'comments' && (
+            <div className="profile-posts-list">
+              {loading ? (
+                <div className="profile-empty-state-box">
+                  <Loader2 size={30} className="spin-animation" style={{ color: '#E11D48' }} />
+                </div>
+              ) : myComments.length === 0 ? (
+                <div className="profile-empty-state-box">
+                  <MessageSquare size={32} strokeWidth={2} style={{ color: '#94A3B8' }} />
+                  <h3 className="profile-empty-title">You haven't written any comments yet.</h3>
+                  <p className="profile-empty-desc">
+                    Join active topic communities and express your perspectives freely.
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-modal-submit-btn"
+                    onClick={() => onNavigate('/explore')}
+                  >
+                    Explore Discussions
+                  </button>
+                </div>
+              ) : (
+                myComments.map((comment, idx) => {
+                  const resolvedCommentId = comment.id || `comment-${idx}`;
+                  const parentPostId = comment.postId;
+                  const topicSlug = comment.topic || 'GENERAL';
+                  const isReply = comment.isReply || Boolean(comment.parentCommentId);
+                  const discussionUrl = parentPostId 
+                    ? `/topic/${topicSlug}/discussion/${parentPostId}`
+                    : (comment.topicId ? `/topic/${comment.topicId}` : '/explore');
+
+                  return (
+                    <article key={resolvedCommentId} className="profile-post-card">
+                      <div className="profile-post-header">
+                        <div className="profile-post-author-wrap">
+                          <img
+                            src={resolvedAvatar}
+                            alt={displayName}
+                            className="profile-post-avatar-thumb"
+                          />
+                          <div className="profile-post-author-meta">
+                            <span className="profile-post-author-name">{displayName}</span>
+                            <span className="profile-post-author-handle">{handle}</span>
+                            <span className="profile-post-bullet">·</span>
+                            <span className="profile-post-time">{formatTimeAgo(comment.createdAt)}</span>
+                          </div>
+                        </div>
+                        <span className="profile-post-topic-tag" style={{ background: isReply ? '#F0FDF4' : '#FFF1F2', color: isReply ? '#16A34A' : '#E11D48' }}>
+                          {isReply ? 'Reply' : 'Comment'}
+                        </span>
+                      </div>
+
+                      <div className="profile-post-body-row">
+                        <div className="profile-post-text-side">
+                          {comment.postTitle && (
+                            <p style={{ margin: '0 0 6px', fontSize: 13, color: '#64748B', fontWeight: 500 }}>
+                              On: <span style={{ color: '#0F172A', fontWeight: 600 }}>{comment.postTitle}</span>
+                            </p>
+                          )}
+                          <p className="profile-post-text-content">
+                            {comment.originalContent || comment.translatedContent || 'Comment text'}
+                          </p>
+
+                          <div className="profile-post-footer" style={{ marginTop: 10 }}>
+                            <div className="profile-post-action-btn" style={{ cursor: 'default' }}>
+                              <Heart size={14} fill="#FFE4E6" color="#E11D48" />
+                              <span>{comment.likeCount || 0}</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="profile-panel-action-btn"
+                              onClick={() => onNavigate(discussionUrl)}
+                            >
+                              <span>View Discussion</span>
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {comment.imageUrl && (
+                          <div className="profile-post-image-side">
+                            <img
+                              src={getMediaUrl(comment.imageUrl)}
+                              alt="Comment media attachment"
+                              className="profile-post-thumb-img"
+                              loading="lazy"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {activeTab === 'liked' && (
+            <div className="profile-posts-list">
+              {likedPosts.length === 0 ? (
+                <div className="profile-empty-state-box">
+                  <Heart size={32} strokeWidth={2} style={{ color: '#94A3B8' }} />
+                  <h3 className="profile-empty-title">No liked posts yet.</h3>
+                  <p className="profile-empty-desc">
+                    Posts you like or react to will appear here so you can revisit them anytime.
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-modal-submit-btn"
+                    onClick={() => onNavigate('/explore')}
+                  >
+                    Browse Feed
+                  </button>
+                </div>
+              ) : (
+                likedPosts.map((post, idx) => (
+                  <article key={post.id ? `liked-${post.id}` : `liked-idx-${idx}`} className="profile-post-card">
+                    <div className="profile-post-header">
+                      <span className="profile-post-topic-tag">#{post.topic || 'General'}</span>
+                      <span className="profile-post-time">{formatTimeAgo(post.createdAt)}</span>
+                    </div>
+                    <p className="profile-post-text-content">
+                      {post.content || post.originalContent || 'Post content'}
+                    </p>
+                    <div className="profile-post-footer">
+                      <button
+                        type="button"
+                        className="profile-post-action-btn liked"
+                        onClick={() => handleToggleLikePost(post)}
+                      >
+                        <Heart size={15} fill="#E11D48" color="#E11D48" />
+                        <span>Liked</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-panel-action-btn"
+                        onClick={() => onNavigate(`/topic/${post.topic || 'GENERAL'}/discussion/${post.id}`)}
+                      >
+                        <span>View Discussion</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
+                  </article>
                 ))
               )}
             </div>
           )}
 
-          {activeTab === 'Muted' && isSelf && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              {uniqueMutedHandles.length === 0 ? (
-                <EmptyState title="No muted handles" description="Handles you mute will appear here." icon={VolumeX} />
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
-                  {uniqueMutedHandles.map((handle) => (
-                    <div
-                      key={handle}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1.5px solid #EAE4E4',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                      }}
-                    >
-                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#2D1D15' }}>
-                        {handle}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => unmuteUser(handle)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 10px',
-                          borderRadius: '8px',
-                          background: 'rgba(111,64,95,0.1)',
-                          color: 'var(--deep-plum)',
-                          border: '1px solid rgba(111,64,95,0.2)',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <Volume2 size={13} />
-                        <span>Unmute</span>
-                      </button>
-                    </div>
-                  ))}
+          {activeTab === 'topics' && (
+            <div className="profile-posts-list">
+              {myTopics.length === 0 ? (
+                <div className="profile-empty-state-box">
+                  <Hash size={32} strokeWidth={2} style={{ color: '#94A3B8' }} />
+                  <h3 className="profile-empty-title">You haven't created any topics yet.</h3>
+                  <p className="profile-empty-desc">
+                    Build a community around your favorite themes, reflections, and passions.
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-modal-submit-btn"
+                    onClick={() => onNavigate('/my-posts')}
+                  >
+                    Go to My Topics
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'Blocked' && isSelf && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              {uniqueBlockedHandles.length === 0 ? (
-                <EmptyState title="No blocked users" description="Users you block will appear here so you can unblock them anytime." icon={ShieldOff} />
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
-                  {uniqueBlockedHandles.map((handle) => (
-                    <div
-                      key={handle}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1.5px solid #EAE4E4',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                      }}
-                    >
-                      <span style={{ fontSize: '13.5px', fontWeight: 700, color: '#2D1D15' }}>
-                        {handle}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => unblockUser(handle)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 10px',
-                          borderRadius: '8px',
-                          background: 'rgba(198,40,40,0.1)',
-                          color: '#C62828',
-                          border: '1px solid rgba(198,40,40,0.2)',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <ShieldOff size={13} />
-                        <span>Unblock</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab Content: Hidden Thoughts Stream */}
-          {activeTab === 'Hidden' && isSelf && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-              {hiddenPosts.length === 0 ? (
-                <EmptyState title="No hidden thoughts" description="Thoughts you hide using post options (...) will appear here so you can unhide them anytime." icon={EyeOff} />
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '16px' }}>
-                  {hiddenPosts.map((item) => {
-                    const id = typeof item === 'object' ? item.id : item;
-                    const title = typeof item === 'object' ? (item.title || item.content || `Thought #${id}`) : `Thought #${id}`;
-                    const author = typeof item === 'object' ? (item.username || '@anonymous') : '@author';
-                    const fullPost = posts.find(p => String(p.id) === String(id));
-                    const imageUrl = fullPost?.imageUrl || (typeof item === 'object' ? item.imageUrl : null);
-                    const displayTitle = fullPost?.title || title;
-                    const displayContent = fullPost?.originalContent || fullPost?.content || (typeof item === 'object' ? item.content : '');
-
-                    return (
-                      <div
-                        key={id}
-                        style={{
-                          aspectRatio: '1 / 1',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          padding: '16px',
-                          borderRadius: '16px',
-                          backgroundColor: '#FFFFFF',
-                          border: '1.5px solid #EAE4E4',
-                          boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        {/* Image background thumbnail if post has image */}
-                        {imageUrl && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: 0,
-                              backgroundImage: `url(${imageUrl})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                              opacity: 0.12,
-                              filter: 'blur(1px)',
-                              pointerEvents: 'none',
-                            }}
-                          />
-                        )}
-
-                        <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflow: 'hidden' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
-                            <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#6F405F', background: 'rgba(111,64,95,0.1)', padding: '3px 9px', borderRadius: '10px' }}>
-                              {author.startsWith('@') ? author : `@${author}`}
-                            </span>
-                            <span style={{ fontSize: '11px', fontWeight: 700, color: '#8C8385' }}>
-                              #{id}
-                            </span>
-                          </div>
-
-                          <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#2D1D15', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.3' }}>
-                            {displayTitle}
-                          </h4>
-
-                          {displayContent && displayContent !== displayTitle && (
-                            <p style={{ fontSize: '12px', color: '#6E625F', margin: 0, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.4' }}>
-                              {displayContent}
-                            </p>
-                          )}
+                myTopics.map((topic, idx) => {
+                  const title = formatTopicTitle(topic);
+                  const cover = resolveTopicCover(topic);
+                  const category = getCategoryLabel(topic);
+                  return (
+                    <article key={topic.id ? `topic-${topic.id}` : `topic-idx-${idx}`} className="profile-post-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate(`/topic/${topic.id}`)}>
+                      <div className="profile-post-body-row">
+                        <div className="profile-post-text-side">
+                          <span className="profile-post-topic-tag">{category}</span>
+                          <h4 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0F172A' }}>{title}</h4>
+                          <p style={{ margin: 0, fontSize: 13, color: '#64748B' }}>
+                            {topic.commentCount || topic.post_count || 0} discussions in this community
+                          </p>
                         </div>
-
-                        <div style={{ position: 'relative', zIndex: 1, marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #F0ECEB' }}>
-                          <button
-                            type="button"
-                            onClick={() => unhidePost(id)}
-                            style={{
-                              width: '100%',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '6px',
-                              padding: '8px 12px',
-                              borderRadius: '12px',
-                              background: 'linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              fontSize: '12.5px',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 8px rgba(46,125,50,0.25)',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            <Eye size={14} />
-                            <span>Unhide Thought</span>
-                          </button>
+                        <div className="profile-post-image-side">
+                          <img src={cover} alt={title} className="profile-post-thumb-img" />
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </article>
+                  );
+                })
               )}
             </div>
           )}
 
-
-
-          </div>
-        </div>
-      </TopicBackgroundRotator>
-
-
-      {/* Edit Profile Modal */}
-      <Modal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} title="Edit Profile">
-        <form onSubmit={handleSaveEdit} className="flex-col gap-md">
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', display: 'block', marginBottom: '6px' }}>
-              Anonymous Handle (Editable Input Field)
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <span style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '10px',
-                    fontSize: '14px',
-                    fontWeight: 800,
-                    color: (editErrors.username || editAvailabilityStatus === 'taken' || editAvailabilityStatus === 'error')
-                      ? '#B33A3A'
-                      : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase()
-                      ? '#2E7D52'
-                      : '#6F405F'
-                  }}>@</span>
-                  <input
-                    type="text"
-                    value={editUsername}
-                    disabled={daysLeftForChange > 0}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/^@/, '');
-                      setEditUsername(val);
-                      const err = validateUsernameString(val, currentUser?.fullName);
-                      setEditErrors((prev) => ({ ...prev, username: err }));
-                    }}
-                    placeholder="captainamerica or cyberninja"
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px 8px 28px',
-                      borderRadius: '10px',
-                      border: (editErrors.username || editAvailabilityStatus === 'taken' || editAvailabilityStatus === 'error')
-                        ? '1.5px solid #B33A3A'
-                        : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase()
-                        ? '1.5px solid #2E7D52'
-                        : '1.5px solid #6F405F',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      outline: 'none',
-                      backgroundColor: daysLeftForChange > 0 ? '#F5EFF3' : '#FFFFFF',
-                      color: daysLeftForChange > 0 ? '#8C8385' : '#2D1D15',
-                      cursor: daysLeftForChange > 0 ? 'not-allowed' : 'text',
-                    }}
-                  />
+          {activeTab === 'bookmarks' && (
+            <div className="profile-posts-list">
+              {savedPosts.length === 0 ? (
+                <div className="profile-empty-state-box">
+                  <Bookmark size={32} strokeWidth={2} style={{ color: '#94A3B8' }} />
+                  <h3 className="profile-empty-title">No saved posts yet.</h3>
+                  <p className="profile-empty-desc">
+                    Bookmark heartfelt thoughts to keep them safe and return whenever you wish.
+                  </p>
+                  <button
+                    type="button"
+                    className="profile-modal-submit-btn"
+                    onClick={() => onNavigate('/explore')}
+                  >
+                    Explore Posts
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={daysLeftForChange > 0}
-                  onClick={() => {
-                    if (daysLeftForChange > 0) {
-                      addToast(`Handle can only be changed once every 14 days. Available in ${daysLeftForChange} days.`, 'info');
-                      return;
-                    }
-                    const newSuggestions = generateUsernameSuggestions(1);
-                    if (newSuggestions.length > 0) {
-                      const uname = newSuggestions[0].replace('@', '');
-                      setEditUsername(uname);
-                      setEditErrors((prev) => ({ ...prev, username: null }));
-                    }
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 12px',
-                    borderRadius: '10px',
-                    background: daysLeftForChange > 0 ? '#C4B9BE' : '#6F405F',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <RefreshCw size={13} />
-                  <span>Shuffle</span>
-                </button>
-              </div>
-
-              {/* Status and Availability Feedback */}
-              {editErrors.username ? (
-                <div style={{ fontSize: '11.5px', color: '#B33A3A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <AlertTriangle size={13} color="#B33A3A" />
-                  <span>{editErrors.username}</span>
-                </div>
-              ) : editAvailabilityStatus === 'checking' ? (
-                <div style={{ fontSize: '11.5px', color: '#6F405F', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Loader2 size={13} className="spin-animation" />
-                  <span>Checking username...</span>
-                </div>
-              ) : editAvailabilityStatus === 'available' && editUsername.trim().toLowerCase() !== (currentUser?.username || '').replace(/^@/, '').toLowerCase() ? (
-                <div style={{ fontSize: '11.5px', color: '#2E7D52', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Check size={13} color="#2E7D52" />
-                  <span>{editAvailabilityMessage || '✓ Username available'}</span>
-                </div>
-              ) : editAvailabilityStatus === 'taken' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '11.5px', color: '#B33A3A', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <XCircle size={13} color="#B33A3A" />
-                    <span>{editAvailabilityMessage || '❌ Username already taken'}</span>
-                  </div>
-                  {editServerSuggestions && editServerSuggestions.length > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-                      <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>Available alternatives:</span>
-                      {editServerSuggestions.map((sug) => (
-                        <button
-                          key={sug}
-                          type="button"
-                          disabled={daysLeftForChange > 0}
-                          onClick={() => {
-                            setEditUsername(sug);
-                            setEditErrors((prev) => ({ ...prev, username: null }));
-                          }}
-                          style={{
-                            padding: '3px 9px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            color: '#6F405F',
-                            background: '#F3EBF0',
-                            border: '1px solid rgba(111, 64, 95, 0.25)',
-                            cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
-                          }}
-                        >
-                          @{sug}
-                        </button>
-                      ))}
+              ) : (
+                savedPosts.map((post, idx) => (
+                  <article key={post.id ? `saved-${post.id}` : `saved-idx-${idx}`} className="profile-post-card">
+                    <div className="profile-post-header">
+                      <span className="profile-post-topic-tag">#{post.topic || 'General'}</span>
+                      <span className="profile-post-time">{formatTimeAgo(post.createdAt)}</span>
                     </div>
-                  )}
-                </div>
-              ) : null}
-
-              {/* Fallback Suggested Number Variants Pills when no server suggestions are active */}
-              {editUsername && editAvailabilityStatus !== 'taken' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '2px' }}>
-                  <span style={{ fontSize: '11px', color: '#6F405F', fontWeight: 700 }}>Suggestions:</span>
-                  {getSuggestedNumberVariants(editUsername, 3).map((numSug) => (
-                    <button
-                      key={numSug}
-                      type="button"
-                      disabled={daysLeftForChange > 0}
-                      onClick={() => {
-                        setEditUsername(numSug);
-                        setEditErrors((prev) => ({ ...prev, username: null }));
-                      }}
-                      style={{
-                        padding: '3px 9px',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: '#6F405F',
-                        background: '#F3EBF0',
-                        border: '1px solid rgba(111, 64, 95, 0.25)',
-                        cursor: daysLeftForChange > 0 ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      @{numSug}
-                    </button>
-                  ))}
-                </div>
+                    <p className="profile-post-text-content">
+                      {post.content || post.originalContent || 'Saved thought'}
+                    </p>
+                    <div className="profile-post-footer">
+                      <button
+                        type="button"
+                        className="profile-post-action-btn saved"
+                        onClick={() => handleToggleSavePost(post)}
+                      >
+                        <Bookmark size={15} fill="#0284C7" color="#0284C7" />
+                        <span>Saved</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="profile-panel-action-btn"
+                        onClick={() => onNavigate(`/topic/${post.topic || 'GENERAL'}/discussion/${post.id}`)}
+                      >
+                        <span>View Discussion</span>
+                        <ArrowRight size={13} />
+                      </button>
+                    </div>
+                  </article>
+                ))
               )}
             </div>
+          )}
+        </section>
 
-            {/* 14-Day Cooldown Note */}
-            <div style={{ marginTop: '8px', fontSize: '11.5px', color: daysLeftForChange > 0 ? '#B33A3A' : '#6E625F', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Info size={13} style={{ color: daysLeftForChange > 0 ? '#B33A3A' : '#6F405F', flexShrink: 0 }} />
-              <span>
-                {daysLeftForChange > 0
-                  ? t('usernameCooldownLeft', `Note: Anonymous handle can only be updated once every 14 days. Next change available in ${daysLeftForChange} days.`)
-                  : t('usernameCooldownNote', 'Note: You get 1 free edit after onboarding. Subsequent edits require a 14-day wait.')}
-              </span>
+        {/* ── RIGHT SIDEBAR ── */}
+        <aside className="profile-right-sidebar" aria-label="Profile Details and Shortcuts">
+          {/* Panel 1: About Me */}
+          <section className="profile-panel-card">
+            <div className="profile-panel-header">
+              <div className="profile-panel-header-left">
+                <UserIcon size={17} style={{ color: '#E11D48' }} />
+                <h3 className="profile-panel-title">About Me</h3>
+              </div>
+              <button
+                type="button"
+                className="profile-panel-action-btn"
+                onClick={() => setIsEditModalOpen(true)}
+              >
+                <Edit3 size={13} />
+                <span>Edit</span>
+              </button>
             </div>
-          </div>
+            <p className="profile-panel-bio-content">{bio}</p>
+          </section>
 
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--eclipse)', display: 'block', marginBottom: '4px' }}>
-              Bio / Tagline
-            </label>
-            <textarea
-              rows={3}
-              value={editBio}
-              onChange={(e) => setEditBio(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #D4CECC', fontSize: '13px' }}
-            />
-          </div>
+          {/* Panel 2: My Top Topics */}
+          <section className="profile-panel-card">
+            <div className="profile-panel-header">
+              <div className="profile-panel-header-left">
+                <Star size={17} style={{ color: '#E11D48' }} />
+                <h3 className="profile-panel-title">My Top Topics</h3>
+              </div>
+              <button
+                type="button"
+                className="profile-panel-action-btn"
+                onClick={() => onNavigate('/my-topics')}
+              >
+                <span>View all</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
-            <Button type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={
-                savingEdit ||
-                Boolean(editErrors.username) ||
-                editAvailabilityStatus === 'taken' ||
-                editAvailabilityStatus === 'checking' ||
-                (daysLeftForChange > 0 && editUsername !== profileData?.username?.replace(/^@/, ''))
-              }
-            >
-              {savingEdit ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Avatar Studio Modal */}
-      {isAvatarModalOpen && (
-        <AvatarStudioModal
-          isOpen={isAvatarModalOpen}
-          onClose={() => setIsAvatarModalOpen(false)}
-          currentUsername={currentUser?.username || '@user'}
-          currentConfig={currentUser?.avatarConfig}
-          onSave={async (newConfig) => {
-            await updateProfile({ avatarConfig: newConfig });
-            setEditAvatarConfig(newConfig);
-            setProfileData((prev) => ({ ...prev, avatarConfig: newConfig }));
-            setIsAvatarModalOpen(false);
-          }}
-        />
-      )}
-
-      {/* ── CREATE THOUGHT ON TOPIC MODAL OVERLAY ── */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        title={`Create Anonymous Thought in #${(targetUsername || 'GENERAL').toUpperCase()}`}
-      >
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (!postContent.trim() || submittingPost) return;
-            setSubmittingPost(true);
-            try {
-              const targetTopic = (targetUsername || 'GENERAL').toUpperCase();
-              await createPost({
-                title: postTitle.trim(),
-                content: postContent.trim(),
-                topic: targetTopic,
-                imageUrl,
-              });
-
-              addToast(`Thought published under #${targetTopic}!`, 'success');
-              setPostTitle('');
-              setPostContent('');
-              setImageUrl('');
-              setIsCreateModalOpen(false);
-            } catch (err) {
-              console.error(err);
-              addToast(err?.message || 'Failed to publish thought.', 'error');
-            } finally {
-              setSubmittingPost(false);
-            }
-          }}
-          style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
-        >
-          <div style={{ borderBottom: '1px solid #E1DCDB', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AvatarThumbnail
-              username={currentUser?.username || '@writer'}
-              initials={currentUser?.avatarInitials || 'AN'}
-              config={currentUser?.avatarConfig}
-              size={32}
-            />
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D1D15' }}>
-              Posting as <span style={{ color: '#6F405F' }}>{currentUser?.username || '@anonymous'}</span> under <span style={{ color: '#D96C3D', fontWeight: 800 }}>#{(targetUsername || 'GENERAL').toUpperCase()}</span>
-            </span>
-          </div>
-
-          <input
-            type="text"
-            placeholder={t('titlePlaceholder', 'Title / Headline (optional)...')}
-            value={postTitle}
-            onChange={(e) => setPostTitle(e.target.value)}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid #D4CECC',
-              fontSize: '14px',
-              outline: 'none',
-            }}
-          />
-
-          <div style={{ position: 'relative', width: '100%' }}>
-            <textarea
-              rows={4}
-              placeholder={t('shareThoughtsFreely', "What's on your mind? Share your unspoken thoughts anonymously...")}
-              value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 42px 12px 14px',
-                borderRadius: '12px',
-                border: '1px solid #D4CECC',
-                fontSize: '14px',
-                outline: 'none',
-                resize: 'vertical',
-              }}
-            />
-
-            <button
-              type="button"
-              {...bindMicProps}
-              title={isRecording ? 'Release mic to transcribe' : 'Press & Hold mic to record voice'}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                bottom: '16px',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: isRecording ? '#B33A3A' : 'rgba(111,64,95,0.12)',
-                color: isRecording ? '#FFFFFF' : '#6F405F',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {isTranscribing ? <Loader2 size={16} className="spin-animation" /> : isRecording ? <MicOff size={16} /> : <Mic size={16} />}
-            </button>
-          </div>
-
-          {/* ── IMAGE ATTACHMENT INPUT FIELD (FILE UPLOAD ONLY) ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label
-              style={{
-                padding: '10px 16px',
-                borderRadius: '12px',
-                background: imageUrl ? 'rgba(111,64,95,0.08)' : 'rgba(111,64,95,0.12)',
-                color: 'var(--deep-plum)',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                border: '1.5px dashed rgba(111,64,95,0.3)',
-                transition: 'all 0.2s ease',
-                width: '100%',
-              }}
-            >
-              <Upload size={16} />
-              <span>{imageUrl ? t('changeImage', 'Change Attached Image') : t('uploadImageFile', '📷 Attach Image File')}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    const res = await apiClient.post('/api/upload/image', formData, {
-                      headers: { 'Content-Type': 'multipart/form-data' },
-                    });
-                    if (res.data?.success && res.data?.data?.imageUrl) {
-                      setImageUrl(res.data.data.imageUrl);
-                      addToast('Image attached successfully!', 'success');
-                    }
-                  } catch (err) {
-                    addToast('Failed to upload image.', 'error');
-                  }
-                }}
-                style={{ display: 'none' }}
-              />
-            </label>
-
-            {imageUrl && (
-              <div style={{ position: 'relative', marginTop: '4px', width: 'fit-content' }}>
-                <img src={imageUrl} alt="Attached Preview" style={{ height: '76px', borderRadius: '10px', border: '1px solid #D4CECC', objectFit: 'cover' }} />
-                <button
-                  type="button"
-                  onClick={() => setImageUrl('')}
-                  style={{
-                    position: 'absolute',
-                    top: '-6px',
-                    right: '-6px',
-                    background: '#FF4D4F',
-                    color: '#FFF',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                  }}
-                >
-                  ✕
-                </button>
+            {topTopics && topTopics.length > 0 ? (
+              <div className="profile-top-topics-grid">
+                {topTopics.map((topic, idx) => {
+                  const presets = [
+                    { bg: '#FFF1F2', color: '#E11D48', defaultIcon: '🌱' },
+                    { bg: '#F0FDF4', color: '#16A34A', defaultIcon: '🌿' },
+                    { bg: '#FFFBEB', color: '#D97706', defaultIcon: '☀️' },
+                  ];
+                  const preset = presets[idx % presets.length];
+                  return (
+                    <div
+                      key={topic.name || idx}
+                      className="profile-top-topic-item"
+                      onClick={() => onNavigate(topic.targetUrl || `/topic/${topic.slug || topic.name?.toLowerCase()}`)}
+                      title={`View ${topic.label || topic.name} discussions`}
+                    >
+                      <div className="profile-top-topic-icon-wrap" style={{ background: preset.bg, color: preset.color }}>
+                        <span>{topic.icon || preset.defaultIcon}</span>
+                      </div>
+                      <h4 className="profile-top-topic-title">{topic.label || topic.name}</h4>
+                      <p className="profile-top-topic-posts">{topic.postCount} {topic.postCount === 1 ? 'post' : 'posts'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="profile-panel-empty-state">
+                <p>No published topics yet</p>
               </div>
             )}
+          </section>
+
+          {/* Panel 3: Recent Activity */}
+          <section className="profile-panel-card">
+            <div className="profile-panel-header">
+              <div className="profile-panel-header-left">
+                <Clock size={17} style={{ color: '#E11D48' }} />
+                <h3 className="profile-panel-title">Recent Activity</h3>
+              </div>
+              <button
+                type="button"
+                className="profile-panel-action-btn"
+                onClick={() => setActiveTab('posts')}
+              >
+                <span>View all</span>
+                <ArrowRight size={13} />
+              </button>
+            </div>
+
+            {recentActivities && recentActivities.length > 0 ? (
+              <div className="profile-recent-activity-list">
+                {recentActivities.map((act, idx) => {
+                  const getIconAndStyle = () => {
+                    switch (act.type) {
+                      case 'COMMENT':
+                        return { icon: <MessageSquare size={15} />, bg: '#FFF1F2', color: '#E11D48' };
+                      case 'LIKE':
+                        return { icon: <Heart size={15} fill="#E11D48" />, bg: '#FFE4E6', color: '#E11D48' };
+                      case 'BOOKMARK':
+                        return { icon: <Bookmark size={15} />, bg: '#E0F2FE', color: '#0284C7' };
+                      case 'POST':
+                      default:
+                        return { icon: <Sparkles size={15} />, bg: '#DCFCE7', color: '#16A34A' };
+                    }
+                  };
+                  const { icon, bg, color } = getIconAndStyle();
+                  return (
+                    <div
+                      key={act.id || idx}
+                      className="profile-activity-item"
+                      onClick={() => {
+                        if (act.type === 'COMMENT') setActiveTab('comments');
+                        else if (act.type === 'LIKE') setActiveTab('liked');
+                        else if (act.type === 'BOOKMARK') setActiveTab('bookmarks');
+                        else setActiveTab('posts');
+                      }}
+                      title="Click to view activity"
+                    >
+                      <div className="profile-activity-icon-wrap" style={{ background: bg, color }}>
+                        {icon}
+                      </div>
+                      <div className="profile-activity-details">
+                        <h4 className="profile-activity-action-title">{act.actionTitle}</h4>
+                        <p className="profile-activity-quote">{act.snippet ? `"${act.snippet}"` : 'No details'}</p>
+                      </div>
+                      <span className="profile-activity-time">{formatTimeAgo(act.timestamp)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="profile-panel-empty-state">
+                <p>No recent activity yet</p>
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      {/* ── EDIT PROFILE MODAL ── */}
+      {isEditModalOpen && (
+        <div className="profile-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setIsEditModalOpen(false); }}>
+          <div className="profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="edit-profile-title">
+            <div className="profile-modal-header">
+              <h2 id="edit-profile-title" className="profile-modal-title">Edit Profile</h2>
+              <button
+                type="button"
+                className="profile-modal-close-btn"
+                onClick={() => setIsEditModalOpen(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div className="profile-modal-field">
+                <label className="profile-modal-label">Display Name</label>
+                <input
+                  type="text"
+                  className="profile-modal-input"
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  placeholder="Your display name"
+                  maxLength={50}
+                  required
+                />
+              </div>
+
+              <div className="profile-modal-field">
+                <label className="profile-modal-label">Bio (max 200 characters)</label>
+                <textarea
+                  className="profile-modal-textarea"
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  placeholder="Write a few words about yourself..."
+                  maxLength={200}
+                />
+                <span style={{ fontSize: 12, color: '#94A3B8', textAlign: 'right' }}>
+                  {editBio.length}/200
+                </span>
+              </div>
+
+              <div className="profile-modal-actions">
+                <button
+                  type="button"
+                  className="profile-modal-cancel-btn"
+                  onClick={() => setIsEditModalOpen(false)}
+                  disabled={isSavingProfile}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="profile-modal-submit-btn"
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
+        </div>
+      )}
 
+      {/* ── DELETE POST CONFIRMATION DIALOG ── */}
+      {postToDelete && (
+        <div className="profile-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setPostToDelete(null); }}>
+          <div className="profile-modal-card" role="dialog" aria-modal="true" aria-labelledby="delete-post-title">
+            <div className="profile-modal-header">
+              <h2 id="delete-post-title" className="profile-modal-title" style={{ color: '#DC2626' }}>Delete Post?</h2>
+              <button
+                type="button"
+                className="profile-modal-close-btn"
+                onClick={() => setPostToDelete(null)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+            <p style={{ margin: '4px 0 16px', fontSize: 14, color: '#475569', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete this post? This action cannot be undone.
+            </p>
 
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(false)}
-              style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #D4CECC', background: '#FFF', fontSize: '13px' }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submittingPost || !postContent.trim()}
-              style={{
-                padding: '8px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                background: 'var(--deep-plum)',
-                color: '#FFF',
-                fontSize: '13px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              {submittingPost ? t('publishing', 'Publishing...') : t('publishThought', 'Publish Thought')}
-            </button>
+            <div className="profile-modal-actions">
+              <button
+                type="button"
+                className="profile-modal-cancel-btn"
+                onClick={() => setPostToDelete(null)}
+                disabled={isDeletingPost}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="profile-modal-submit-btn danger"
+                onClick={handleConfirmDeletePost}
+                disabled={isDeletingPost}
+              >
+                {isDeletingPost ? 'Deleting...' : 'Delete Post'}
+              </button>
+            </div>
           </div>
-        </form>
-      </Modal>
+        </div>
+      )}
     </UserLayout>
   );
 }
 
+export default ProfilePage;

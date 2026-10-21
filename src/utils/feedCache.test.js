@@ -17,6 +17,7 @@ test('empty successful feeds clear stale data but preserve pending writes', () =
 });
 
 test('post and topic opinion identities do not collide', () => {
-  const items = [{ id: 1, feedItemId: 'POST_1' }, { id: 1, feedItemId: 'TOPIC_OPINION_1' }];
-  assert.equal(mergeFeed(items).length, 2);
+  const items = [{ id: 1, feedItemId: 'POST_1' }, { id: 1, feedItemId: 'TOPIC_OPINION_1' }, { id: 1, feedItemId: 'PULSE_1' }];
+  assert.equal(mergeFeed(items).length, 3);
 });
+

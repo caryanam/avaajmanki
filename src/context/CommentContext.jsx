@@ -15,10 +15,11 @@ export function CommentProvider({ children }) {
   const fetchComments = useCallback(async (postId) => {
     if (!postId) return [];
     const pStr = String(postId);
-    if (pStr.startsWith('TOPIC_OPINION_') || isNaN(Number(postId))) {
+    const isPulse = pStr.toUpperCase().startsWith('PULSE_');
+    if (pStr.startsWith('TOPIC_OPINION_') || (isNaN(Number(postId)) && !isPulse)) {
       return [];
     }
-    const pNum = Number(postId);
+    const pNum = isPulse ? pStr : Number(postId);
     try {
       const response = await apiCommentService.getCommentsByPostId(postId);
       const raw = response.data?.content || response.data || [];
@@ -38,7 +39,7 @@ export function CommentProvider({ children }) {
   // CommentList owns polling only while a discussion is mounted and visible.
 
 
-  const createComment = async (postId, content, postAuthorUsername) => {
+  const createComment = async (postId, content, postAuthorUsername, imageUrl = null) => {
     if (!currentUser) throw new Error('You must be logged in to comment.');
     if (currentUser.status === 'COMMENT_RESTRICTED') {
       throw new Error(`Commenting restricted: ${currentUser.restrictionReason || 'Account restricted.'}`);
@@ -51,8 +52,9 @@ export function CommentProvider({ children }) {
       postId,
       username: currentUser?.username || '@me',
       avatarInitials: currentUser?.avatarInitials || 'AN',
-      content,
-      originalContent: content,
+      content: typeof content === "object" ? content.content : content,
+      originalContent: typeof content === "object" ? content.content : content,
+      imageUrl: typeof content === "object" ? content.imageUrl : imageUrl,
       createdAt: new Date().toISOString(),
       reactions: {},
       userReaction: null,
@@ -65,7 +67,7 @@ export function CommentProvider({ children }) {
     });
 
     try {
-      const response = await apiCommentService.createComment(postId, content);
+      const response = await apiCommentService.createComment(postId, typeof content === "object" ? content : { content, imageUrl });
       const serverComment = mapComment(response.data || response);
 
       setCommentsByPost((prev) => {
@@ -110,22 +112,31 @@ export function CommentProvider({ children }) {
     }
   };
 
-  const createReply = async (commentId, postId, content, commentAuthorUsername) => {
+  const createReply = async (commentId, postId, content, commentAuthorUsername, imageUrl = null) => {
     if (!currentUser) throw new Error('You must be logged in to reply.');
 
     // 0ms Instant Optimistic Reply Insertion
-    const tempReplyId = `temp_reply_${Date.now()}`;
-    const optimisticReply = mapComment({
-      id: tempReplyId,
-      commentId,
-      postId,
-      username: currentUser?.username || '@me',
-      avatarInitials: currentUser?.avatarInitials || 'AN',
-      content,
-      originalContent: content,
-      createdAt: new Date().toISOString(),
-      reactions: {},
-    });
+    const tempReplyId = `temp_reply_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const effectiveContent = typeof content === 'object' ? content.content : content;
+    const effectiveImageUrl = typeof content === 'object' ? content.imageUrl : imageUrl;
+
+    const optimisticReply = {
+      ...mapComment({
+        id: tempReplyId,
+        commentId,
+        postId,
+        username: currentUser?.username || '@me',
+        avatarInitials: currentUser?.avatarInitials || 'AN',
+        content: effectiveContent,
+        originalContent: effectiveContent,
+        imageUrl: effectiveImageUrl,
+        isOwnComment: true,
+        createdAt: new Date().toISOString(),
+        reactions: {},
+      }),
+      isOptimistic: true,
+      status: 'SENDING',
+    };
 
     setCommentsByPost((prev) => {
       const existingComments = prev[postId] || [];
@@ -140,8 +151,10 @@ export function CommentProvider({ children }) {
     });
 
     try {
-      const response = await apiCommentService.replyToComment ? await apiCommentService.replyToComment(commentId, content) : await apiCommentService.createComment(postId, content);
-      const serverReply = mapComment(response.data || response);
+      const payload = typeof content === 'object' ? content : { content: effectiveContent, imageUrl: effectiveImageUrl };
+      const response = await apiCommentService.replyToComment(commentId, payload);
+      const rawServerReply = mapComment(response.data || response);
+      const serverReply = { ...rawServerReply, isOptimistic: false, status: 'ACTIVE' };
 
       setCommentsByPost((prev) => {
         const existingComments = prev[postId] || [];

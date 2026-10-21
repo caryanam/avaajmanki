@@ -20,9 +20,14 @@ const OnboardingPage = React.lazy(() => import('../pages/onboarding/OnboardingPa
 const DashboardPage = React.lazy(() => import('../pages/user/DashboardPage.jsx').then(module => ({ default: module.DashboardPage })));
 const HomePage = React.lazy(() => import('../pages/user/HomePage.jsx').then(module => ({ default: module.HomePage })));
 const ExplorePage = React.lazy(() => import('../pages/user/ExplorePage.jsx').then(module => ({ default: module.ExplorePage })));
+const TopicDirectoryPage = React.lazy(() => import('../pages/user/TopicDirectoryPage.jsx').then(module => ({ default: module.TopicDirectoryPage })));
 const CreatePostPage = React.lazy(() => import('../pages/user/CreatePostPage.jsx').then(module => ({ default: module.CreatePostPage })));
 const TopicDiscussionPage = React.lazy(() => import('../pages/user/TopicDiscussionPage.jsx').then(module => ({ default: module.TopicDiscussionPage })));
+const TopicCommunityPage = React.lazy(() => import('../pages/user/TopicCommunityPage.jsx').then(module => ({ default: module.TopicCommunityPage })));
+const PostDiscussionPage = React.lazy(() => import('../pages/user/PostDiscussionPage.jsx').then(module => ({ default: module.PostDiscussionPage })));
 const PostDetailsPage = React.lazy(() => import('../pages/user/PostDetailsPage.jsx').then(module => ({ default: module.PostDetailsPage })));
+const PulseDetailsPage = React.lazy(() => import('../pages/user/PulseDetailsPage.jsx').then(module => ({ default: module.PulseDetailsPage })));
+const PulsePage = React.lazy(() => import('../pages/user/PulsePage.jsx').then(module => ({ default: module.PulsePage })));
 const NotificationsPage = React.lazy(() => import('../pages/user/NotificationsPage.jsx').then(module => ({ default: module.NotificationsPage })));
 const SavedPostsPage = React.lazy(() => import('../pages/user/SavedPostsPage.jsx').then(module => ({ default: module.SavedPostsPage })));
 const MyPostsPage = React.lazy(() => import('../pages/user/MyPostsPage.jsx').then(module => ({ default: module.MyPostsPage })));
@@ -47,6 +52,7 @@ const AdminUsersPage = React.lazy(() => import('../pages/admin/AdminUsersPage.js
 const AdminAnalyticsPage = React.lazy(() => import('../pages/admin/AdminAnalyticsPage.jsx').then(module => ({ default: module.AdminAnalyticsPage })));
 const AdminEnquiriesPage = React.lazy(() => import('../pages/admin/AdminEnquiriesPage.jsx').then(module => ({ default: module.AdminEnquiriesPage })));
 const AdminMusicPage = React.lazy(() => import('../pages/admin/AdminMusicPage.jsx').then(module => ({ default: module.AdminMusicPage })));
+const AdminPulsePage = React.lazy(() => import('../pages/admin/AdminPulsePage.jsx').then(module => ({ default: module.AdminPulsePage })));
 
 export function AppRoutes() {
 
@@ -62,14 +68,24 @@ export function AppRoutes() {
   }, []);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-    const timer = setTimeout(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      try {
+        window.history.scrollRestoration = 'manual';
+      } catch {}
+    }
+    const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-    }, 50);
+      const scrollContainers = document.querySelectorAll(
+        '.topic-community-center-stream, .topic-community-right-sidebar, .explore-center-stream, .explore-right-sidebar, #topic-directory-stream'
+      );
+      scrollContainers.forEach((el) => {
+        el.scrollTop = 0;
+      });
+    };
+    resetScroll();
+    const timer = setTimeout(resetScroll, 50);
     return () => clearTimeout(timer);
   }, [currentPath]);
 
@@ -156,6 +172,18 @@ export function AppRoutes() {
   if (normalizedPath === '/admin/enquiries') {
     return <AdminEnquiriesPage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/admin/pulse') {
+    return <AdminPulsePage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/admin/pulse/candidates') {
+    return <AdminPulsePage onNavigate={navigate} initialTab="candidates" />;
+  }
+  if (normalizedPath === '/admin/pulse/sources') {
+    return <AdminPulsePage onNavigate={navigate} initialTab="sources" />;
+  }
+  if (normalizedPath === '/admin/pulse/create' || normalizedPath === '/admin/pulse/editor') {
+    return <AdminPulsePage onNavigate={navigate} initialTab="items" autoOpenCreate={true} />;
+  }
   if (normalizedPath === '/admin/users') {
 
     return <AdminUsersPage onNavigate={navigate} />;
@@ -173,6 +201,41 @@ export function AppRoutes() {
     return <AdminBlockedContentPage onNavigate={navigate} />;
   }
 
+  // Public Pulse Editorial Story Routes (open for public reading)
+  if (normalizedPath === '/pulse') {
+    return <PulsePage onNavigate={navigate} />;
+  }
+  if (normalizedPath.startsWith('/pulse/')) {
+    const pulseId = normalizedPath.split('/pulse/')[1];
+    return <PulseDetailsPage pulseId={pulseId} onNavigate={navigate} />;
+  }
+
+  // Public Home & Explore Routes (accessible to both guests and logged-in users)
+  if (normalizedPath === '/home') {
+    return <HomePage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/topics' || normalizedPath === '/explore/topics') {
+    return <TopicDirectoryPage onNavigate={navigate} />;
+  }
+  if (normalizedPath.startsWith('/explore')) {
+    return <ExplorePage onNavigate={navigate} />;
+  }
+  if (normalizedPath.startsWith('/topic/')) {
+    const after = normalizedPath.substring(7);
+    const parts = after.split('/');
+    const topicId = parts[0];
+    const isPostSubpath = parts[1] === 'discussion' || parts[1] === 'post';
+    const postId = isPostSubpath ? parts[2] : (parts[1] && parts[1] !== '' ? parts[1] : null);
+    if (postId) {
+      return <PostDiscussionPage topicId={topicId} postId={postId} onNavigate={navigate} />;
+    }
+    return <TopicCommunityPage topicId={topicId} onNavigate={navigate} />;
+  }
+  if (normalizedPath.startsWith('/post/')) {
+    const postId = normalizedPath.split('/post/')[1];
+    return <PostDiscussionPage postId={postId} onNavigate={navigate} />;
+  }
+
   // 5. User App Protected Routes (redirect to /login if not logged in)
   if (!currentUser) {
     return <LoginPage onNavigate={navigate} />;
@@ -181,25 +244,11 @@ export function AppRoutes() {
   if (normalizedPath === '/dashboard') {
     return <DashboardPage onNavigate={navigate} />;
   }
-  if (normalizedPath === '/home') {
-    return <HomePage onNavigate={navigate} />;
-  }
-  if (normalizedPath.startsWith('/explore')) {
-    return <ExplorePage onNavigate={navigate} />;
-  }
   if (normalizedPath === '/music') {
     return <MusicPage onNavigate={navigate} />;
   }
   if (normalizedPath === '/create-post') {
     return <CreatePostPage onNavigate={navigate} />;
-  }
-  if (normalizedPath.startsWith('/topic/')) {
-    const topicId = normalizedPath.split('/topic/')[1];
-    return <TopicDiscussionPage topicId={topicId} onNavigate={navigate} />;
-  }
-  if (normalizedPath.startsWith('/post/')) {
-    const postId = normalizedPath.split('/post/')[1];
-    return <PostDetailsPage postId={postId} onNavigate={navigate} />;
   }
   // 1-on-1 Direct Chat route disabled as per topic-based platform requirements
   // if (normalizedPath.startsWith('/chat')) {
@@ -212,7 +261,7 @@ export function AppRoutes() {
   if (normalizedPath === '/saved') {
     return <SavedPostsPage onNavigate={navigate} />;
   }
-  if (normalizedPath === '/my-posts') {
+  if (normalizedPath === '/my-posts' || normalizedPath === '/my-topics') {
     return <MyPostsPage onNavigate={navigate} />;
   }
   if (normalizedPath === '/my-reports') {
@@ -231,16 +280,16 @@ export function AppRoutes() {
     return <EditProfilePage onNavigate={navigate} />;
   }
   if (normalizedPath === '/settings') {
-    return <SettingsPage onNavigate={navigate} />;
+    return <SettingsPage initialSection="profile" onNavigate={navigate} />;
   }
   if (normalizedPath === '/settings/privacy') {
-    return <PrivacySettingsPage onNavigate={navigate} />;
+    return <SettingsPage initialSection="privacy" onNavigate={navigate} />;
   }
   if (normalizedPath === '/settings/account') {
-    return <AccountSettingsPage onNavigate={navigate} />;
+    return <SettingsPage initialSection="account" onNavigate={navigate} />;
   }
   if (normalizedPath === '/settings/notifications') {
-    return <NotificationSettingsPage onNavigate={navigate} />;
+    return <SettingsPage initialSection="notifications" onNavigate={navigate} />;
   }
   if (normalizedPath === '/settings/safety') {
     return <SafetyModerationPage onNavigate={navigate} />;

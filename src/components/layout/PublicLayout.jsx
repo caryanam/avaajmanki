@@ -17,12 +17,12 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
 
 
   const NAV_LINKS = [
-    { label: t('home') || 'Home', route: currentUser ? '/home' : '/' },
-    { label: t('explore') || 'Explore', route: '/explore' },
-    { label: t('about') || 'About Us', route: '/about' },
-    { label: t('communityGuidelines') || 'Guidelines', route: '/community-guidelines' },
-    { label: 'Privacy Policy', route: '/privacy-policy' },
-    { label: 'Contact', route: '/contact' },
+    { label: t('nav.home', 'Home'), route: currentUser ? '/home' : '/' },
+    { label: t('nav.explore', 'Explore'), route: '/explore' },
+    { label: t('nav.aboutUs', 'About Us'), route: '/about' },
+    { label: t('nav.guidelines', 'Guidelines'), route: '/community-guidelines' },
+    { label: t('nav.privacyPolicy', 'Privacy Policy'), route: '/privacy-policy' },
+    { label: t('nav.contact', 'Contact'), route: '/contact' },
   ];
 
   return (
@@ -115,7 +115,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                 }}
               >
                 <Home size={14} />
-                Feed
+                {t('nav.feed', 'Feed')}
               </button>
             ) : (
               <>
@@ -129,7 +129,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                     fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  Login
+                  {t('nav.login', 'Login')}
                 </button>
                 <button
                   type="button"
@@ -141,7 +141,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Get Started
+                  {t('nav.getStarted', 'Get Started')}
                 </button>
               </>
             )}
@@ -210,7 +210,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                     fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                   }}
                 >
-                  Go to Feed
+                  {t('nav.feed', 'Go to Feed')}
                 </button>
               ) : (
                 <>
@@ -222,7 +222,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                       fontSize: '14px', fontWeight: 600, cursor: 'pointer',
                     }}
                   >
-                    Login
+                    {t('nav.login', 'Login')}
                   </button>
                   <button
                     onClick={() => { setMobileMenuOpen(false); onNavigate('/register'); }}
@@ -232,7 +232,7 @@ export function PublicLayout({ children, activeRoute, onNavigate }) {
                       fontSize: '14px', fontWeight: 700, cursor: 'pointer',
                     }}
                   >
-                    Get Started
+                    {t('nav.getStarted', 'Get Started')}
                   </button>
                 </>
               )}

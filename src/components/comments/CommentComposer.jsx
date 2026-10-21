@@ -76,23 +76,16 @@ export function CommentComposer({
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { currentLanguage, t } = useLanguage();
-  const { activeReplyCommentId } = useComments();
+  const { activeReplyCommentId, createComment } = useComments();
   const [spokenLanguage] = useSpokenLanguage();
   const inputRef = React.useRef(null);
-
-  if (activeReplyCommentId) {
-    return null;
-  }
-
-
+  const baseTextRef = React.useRef(null);
 
   React.useEffect(() => {
     if (autoFocus && inputRef.current) {
       inputRef.current.focus();
     }
   }, [autoFocus]);
-
-  const baseTextRef = React.useRef(null);
 
   const handleVoiceTranscription = React.useCallback((transcribedText) => {
     if (baseTextRef.current === null) {
@@ -110,6 +103,11 @@ export function CommentComposer({
     }
   }, [isRecording, isTranscribing]);
 
+  // If a reply to a specific comment is actively being composed elsewhere, hide the main composer
+  if (activeReplyCommentId) {
+    return null;
+  }
+
   const minLength = 2;
   const maxLength = 1000;
   const hasValidText = text.trim().length >= minLength && text.length <= maxLength;
@@ -122,6 +120,12 @@ export function CommentComposer({
     if (e && e.preventDefault) e.preventDefault();
     if (!isValid || isBlocked || submitting) return;
 
+    if (!currentUser) {
+      addToast('Please log in to write a comment.', 'error');
+      if (onNavigate) onNavigate('/login');
+      return;
+    }
+
     if (currentUser?.status === 'COMMENT_RESTRICTED') {
       addToast(`Comment restricted: ${currentUser.restrictionReason || 'Account restricted.'}`, 'error');
       return;
@@ -129,7 +133,7 @@ export function CommentComposer({
 
     setSubmitting(true);
     try {
-      await onSubmit(text.trim(), imageUrl || null);
+      if (onSubmit) { await onSubmit(text.trim(), imageUrl || null); } else if (createComment && postId) { await createComment(postId, text.trim(), postAuthorUsername, imageUrl || null); }
       setText('');
       setImageUrl('');
       setShowEmojis(false);

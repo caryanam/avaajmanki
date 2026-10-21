@@ -15,17 +15,18 @@ const sanitizeUrl = (url) => {
   return url.trim().replace(/^\[|\]$/g, '').replace(/^"|"$/g, '').replace(/^'|'$/g, '');
 };
 
-const rawEnv = (import.meta.env.VITE_ENVIRONMENT || '').trim().toLowerCase();
-const currentEnvMode = rawEnv || (import.meta.env.DEV ? ENV_MODES.LOCAL : ENV_MODES.PRODUCTION);
+const metaEnv = import.meta.env || {};
+const rawEnv = (metaEnv.VITE_ENVIRONMENT || '').trim().toLowerCase();
+const currentEnvMode = rawEnv || (metaEnv.DEV ? ENV_MODES.LOCAL : ENV_MODES.PRODUCTION);
 
-const prodApiUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_URL) || 'https://api.awaazmanki.com';
-const prodSocketUrl = sanitizeUrl(import.meta.env.VITE_PRODUCTION_SOCKET_URL) || 'https://socketapi.awaazmanki.com';
+const prodApiUrl = sanitizeUrl(metaEnv.VITE_PRODUCTION_URL) || 'https://api.awaazmanki.com';
+const prodSocketUrl = sanitizeUrl(metaEnv.VITE_PRODUCTION_SOCKET_URL) || 'https://socketapi.awaazmanki.com';
 
-const localApiUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_URL) || 'http://localhost:8080';
-const localSocketUrl = sanitizeUrl(import.meta.env.VITE_LOCAL_SOCKET_URL) || 'http://localhost:8085';
+const localApiUrl = sanitizeUrl(metaEnv.VITE_LOCAL_URL) || 'http://localhost:8080';
+const localSocketUrl = sanitizeUrl(metaEnv.VITE_LOCAL_SOCKET_URL) || 'http://localhost:8085';
 
-const testingApiUrl = sanitizeUrl(import.meta.env.VITE_TESTING_URL);
-const testingSocketUrl = sanitizeUrl(import.meta.env.VITE_TESTING_SOCKET_URL);
+const testingApiUrl = sanitizeUrl(metaEnv.VITE_TESTING_URL);
+const testingSocketUrl = sanitizeUrl(metaEnv.VITE_TESTING_SOCKET_URL);
 
 let selectedApiUrl = localApiUrl;
 let selectedSocketUrl = localSocketUrl;
@@ -56,7 +57,15 @@ export const SERVER_URL = API_BASE_URL;
  */
 export const getMediaUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('data:') ||
+    url.startsWith('blob:') ||
+    url.startsWith('/src/') ||
+    url.startsWith('/assets/') ||
+    url.startsWith('/@')
+  ) {
     return url;
   }
   const cleanUrl = url.startsWith('/') ? url : `/${url}`;

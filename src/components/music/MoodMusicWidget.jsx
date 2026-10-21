@@ -151,13 +151,19 @@ export function MoodMusicWidget() {
 
   const dynamicStyle = {
     position: 'fixed',
-    zIndex: 999999,
+    zIndex: 'var(--z-player, 500)',
     cursor: isDraggingRef.current ? 'grabbing' : 'grab',
     touchAction: 'none',
     ...(pos.x !== null && pos.y !== null
       ? { left: `${pos.x}px`, top: `${pos.y}px`, right: 'auto', bottom: 'auto' }
-      : { right: '20px', bottom: '20px' }),
+      : { left: '24px', bottom: '24px' }),
   };
+
+  // Hide MoodMusicWidget if bottom player is active and in compact or expanded state
+  const playerState = typeof window !== 'undefined' ? (localStorage.getItem('mka_player_state') || 'compact') : 'compact';
+  if (music.currentTrack && (playerState === 'compact' || playerState === 'expanded')) {
+    return null;
+  }
 
   if (!music.isWidgetOpen) {
     return createPortal(

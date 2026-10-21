@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext.jsx';
 import { useLanguage, normalizeLanguage } from './LanguageContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { mergeFeed } from '../utils/feedCache.js';
+import { normalizeReactionType } from '../utils/normalizeReaction.js';
 
 const PostContext = createContext(null);
 
@@ -52,6 +53,7 @@ export function PostProvider({ children }) {
     staleTime: 10000,
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
     retry: 2,
   });
 
@@ -142,7 +144,7 @@ export function PostProvider({ children }) {
       return;
     }
 
-    const typeKey = (reactionType || 'RELATE').toUpperCase();
+    const typeKey = normalizeReactionType(reactionType);
 
     // 1. Optimistically update TanStack Query cache instantly for immediate UI feedback
     queryClient.setQueriesData({ predicate: (query) => query.queryKey[0] === 'posts' }, (oldPosts = []) => {
@@ -150,7 +152,7 @@ export function PostProvider({ children }) {
       return oldPosts.map((p) => {
         if (String(p.id) !== String(postId)) return p;
 
-        const prevReaction = p.userReaction ? p.userReaction.toUpperCase() : null;
+        const prevReaction = p.userReaction ? normalizeReactionType(p.userReaction) : null;
         const currentReactions = { ...(p.reactions || {}) };
 
         let newUserReaction = typeKey;

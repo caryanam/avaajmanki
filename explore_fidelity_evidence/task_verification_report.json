@@ -1,0 +1,76 @@
+{
+  "step1": {
+    "discussions": 42,
+    "cards": 8,
+    "searchVal": ""
+  },
+  "step2": {
+    "discussions": 42,
+    "cards": 8
+  },
+  "step3": {
+    "discussions": 3,
+    "cards": 3,
+    "titles": [
+      "Love",
+      "Relationships",
+      "Friendship"
+    ],
+    "hasLoveError": false
+  },
+  "step4": {
+    "discussions": 42,
+    "cards": 8
+  },
+  "step5": {
+    "discussions": 0
+  },
+  "step6": {
+    "restoredDiscussions": 42
+  },
+  "step7": {
+    "latestCount": 42,
+    "mostCommentedCount": 42,
+    "trendingCount": 42
+  },
+  "step8": {
+    "discussions": 42,
+    "cards": 8
+  },
+  "step9": {
+    "discussions": 42,
+    "cards": 8
+  },
+  "1440x900": {
+    "overflow": false,
+    "cardMetrics": {
+      "w": 144,
+      "h": 123
+    },
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_fixed_1440x900.png"
+  },
+  "1366x768": {
+    "overflow": false,
+    "cardMetrics": {
+      "w": 144,
+      "h": 123
+    },
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_fixed_1366x768.png"
+  },
+  "1024x768": {
+    "overflow": false,
+    "cardMetrics": {
+      "w": 144,
+      "h": 123
+    },
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_fixed_1024x768.png"
+  },
+  "390px_mobile": {
+    "overflow": false,
+    "cardMetrics": {
+      "w": 160,
+      "h": 133
+    },
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_fixed_390px_mobile.png"
+  }
+}

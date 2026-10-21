@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { UI_DICTIONARY, SUPPORTED_LANGUAGES } from '../utils/translations.js';
+import i18n, { loadAndSetLanguage } from '../i18n.js';
+import { SUPPORTED_LANGUAGES } from '../utils/translations.js';
 import { apiTranslationService, normalizeLanguageCode } from '../services/apiTranslationService.js';
 import { apiProfileService } from '../services/apiProfileService.js';
 import { apiUserService } from '../services/apiUserService.js';
+import { LEGACY_KEY_MAP } from '../utils/legacyKeyMap.js';
 
 const LanguageContext = createContext(null);
 
-// In-flight request deduplication map to prevent API call storms
+// In-flight request deduplication map for on-demand post/comment translations
 const pendingTranslations = new Map();
 
 /**
@@ -16,7 +18,7 @@ const pendingTranslations = new Map();
 export function getLanguageCode(lang) {
   if (!lang) return 'EN';
   const code = normalizeLanguageCode(lang);
-  return code || 'EN';
+  return code ? code.toUpperCase() : 'EN';
 }
 
 /**
@@ -50,42 +52,6 @@ export function resolveBrowserOrFallbackLanguage() {
   return 'English';
 }
 
-/**
- * Batch-translate all English UI dictionary keys into targetLang via OpenAI API.
- * Chunks keys into batches of ~15 keys to prevent API timeouts.
- */
-async function batchTranslateUI(targetLang) {
-  const englishDict = UI_DICTIONARY['English'];
-  if (!englishDict) return {};
-
-  const normTarget = normalizeLanguage(targetLang);
-  if (normTarget === 'English') return {};
-
-  const entries = Object.entries(englishDict);
-  const CHUNK_SIZE = 10;
-  const result = {};
-  const isoCode = getLanguageCode(normTarget);
-
-  for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
-    const chunk = entries.slice(i, i + CHUNK_SIZE);
-    const chunkPromises = chunk.map(async ([key, englishVal]) => {
-      try {
-        const trans = await apiTranslationService.translateText(englishVal, isoCode, 'EN');
-        return [key, trans || englishVal];
-      } catch {
-        return [key, englishVal];
-      }
-    });
-
-    const resolved = await Promise.all(chunkPromises);
-    resolved.forEach(([k, v]) => {
-      result[k] = v;
-    });
-  }
-
-  return result;
-}
-
 export function LanguageProvider({ children }) {
   const queryClient = useQueryClient();
   const [isResolvingLanguage, setIsResolvingLanguage] = useState(true);
@@ -96,107 +62,60 @@ export function LanguageProvider({ children }) {
   const [translationCache, setTranslationCache] = useState({});
   const [isTranslating, setIsTranslating] = useState(false);
 
-  const [dynamicUI, setDynamicUI] = useState(() => {
-    try {
-      const cached = localStorage.getItem('mka_dynamic_ui');
-      if (cached && cached.includes('MKA_SEP')) {
-        localStorage.removeItem('mka_dynamic_ui');
-        return {};
-      }
-      return cached ? JSON.parse(cached) : {};
-    } catch {
-      return {};
-    }
-  });
-
-
-  const hasHardcodedDict = useCallback((langCode) => {
-    const norm = normalizeLanguage(langCode);
-    const dict = UI_DICTIONARY[norm] || UI_DICTIONARY[langCode];
-    if (!dict) return false;
-    const essentialKeys = ['home', 'latest', 'topicsStream', 'noThoughtsFound', 'personalSpace'];
-    return essentialKeys.every(k => !!dict[k]);
-  }, []);
-
-  const translateUIForLanguage = useCallback(async (langCode) => {
-    const norm = normalizeLanguage(langCode);
-    if (norm === 'English' || langCode === 'EN') {
-      setDynamicUI({});
-      try { localStorage.removeItem('mka_dynamic_ui'); } catch {}
-      return;
-    }
-    if (hasHardcodedDict(norm)) return;
-    if (dynamicUI._lang === norm && Object.keys(dynamicUI).length > 2) return;
-
-    try {
-      const translated = await batchTranslateUI(norm);
-      translated._lang = norm;
-      setDynamicUI(translated);
-      try {
-        localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
-      } catch {}
-    } catch (err) {
-      console.warn('[LanguageContext] Dynamic UI translation warning:', err?.message);
-    }
-  }, [hasHardcodedDict, dynamicUI]);
-
-  // Sync language with backend user profile on load & when logging in as different user
+  // Initialize i18next with preferred language on mount
   useEffect(() => {
-    const syncProfileLanguage = async () => {
+    const initAppLanguage = async () => {
       try {
-        if (window.location.pathname.startsWith('/admin')) {
+        const saved = localStorage.getItem('mka_preferred_language');
+        const token = localStorage.getItem('auth_token');
+
+        // Priority 1: User's explicitly saved language in localStorage
+        if (saved) {
+          const normalized = normalizeLanguage(saved);
+          const langCode = getLanguageCode(normalized).toLowerCase();
+          await loadAndSetLanguage(langCode);
+          setCurrentLanguage(normalized);
           setIsResolvingLanguage(false);
           return;
         }
-        const token = localStorage.getItem('auth_token');
 
+        // Priority 2: If localStorage is empty and user is logged in, sync from DB profile once
         if (token && !token.startsWith('mock')) {
-          // Fetch logged-in user profile from DB to get their specific preferredLanguage
           const profileRes = await apiProfileService.getMyProfile().catch(() => null);
-          const rawLang = profileRes?.data?.preferredLanguage || localStorage.getItem('mka_preferred_language');
-
-          if (rawLang) {
-            const normalized = normalizeLanguage(rawLang);
-            const isoCode = getLanguageCode(normalized);
-
+          const dbLang = profileRes?.data?.preferredLanguage;
+          if (dbLang) {
+            const normalized = normalizeLanguage(dbLang);
+            const langCode = getLanguageCode(normalized).toLowerCase();
+            await loadAndSetLanguage(langCode);
             setCurrentLanguage(normalized);
             localStorage.setItem('mka_preferred_language', normalized);
-
-            // Sync valid ISO code with backend (/api/users/language)
-            await apiUserService.updateLanguage(isoCode).catch(() => {});
-
-            if (!hasHardcodedDict(normalized) && normalized !== 'English') {
-              batchTranslateUI(normalized).then((translated) => {
-                translated._lang = normalized;
-                setDynamicUI(translated);
-                try {
-                  localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
-                } catch {}
-              });
-            }
-
-            await queryClient.invalidateQueries({
-              predicate: (query) => {
-                const key = query.queryKey[0];
-                return ['comments', 'notifications', 'profile', 'chatMessages'].includes(key);
-              },
-            });
+            setIsResolvingLanguage(false);
+            return;
           }
         }
+
+        // Priority 3: Fallback / Browser language
+        const initialNorm = resolveBrowserOrFallbackLanguage();
+        const code = getLanguageCode(initialNorm).toLowerCase();
+        await loadAndSetLanguage(code);
+        setCurrentLanguage(initialNorm);
       } catch (err) {
-        // Silently handle sync failure
+        console.warn('[LanguageContext] Language init warning:', err?.message || err);
       } finally {
         setIsResolvingLanguage(false);
       }
     };
-    syncProfileLanguage();
-  }, [queryClient, hasHardcodedDict]);
+
+    initAppLanguage();
+  }, []);
 
   // Listen for login / account language change events
   useEffect(() => {
-    const handleCustomLangChange = (e) => {
+    const handleCustomLangChange = async (e) => {
       if (e.detail) {
         const norm = normalizeLanguage(e.detail);
+        const code = getLanguageCode(norm).toLowerCase();
+        await loadAndSetLanguage(code);
         setCurrentLanguage(norm);
         localStorage.setItem('mka_preferred_language', norm);
         queryClient.invalidateQueries({ queryKey: ['comments'] });
@@ -206,74 +125,85 @@ export function LanguageProvider({ children }) {
     return () => window.removeEventListener('mka_language_changed', handleCustomLangChange);
   }, [queryClient]);
 
-  useEffect(() => {
-    const norm = normalizeLanguage(currentLanguage);
-    if (norm && norm !== 'English') {
-      translateUIForLanguage(norm);
-    }
-  }, [currentLanguage, translateUIForLanguage]);
-
   const changeLanguage = async (langCode) => {
     if (!langCode) return;
     const normalized = normalizeLanguage(langCode);
     const isoCode = getLanguageCode(normalized);
+    const code = isoCode.toLowerCase();
 
     setIsTranslating(true);
-    setCurrentLanguage(normalized);
-    setTranslationCache({});
-    localStorage.setItem('mka_preferred_language', normalized);
 
     try {
+      // 1. Activate in i18next & update HTML dir/lang attributes
+      await loadAndSetLanguage(code);
+
+      // 2. Update local state & storage
+      setCurrentLanguage(normalized);
+      setTranslationCache({});
+      localStorage.setItem('mka_preferred_language', normalized);
+
+      // 3. Sync to backend for logged-in users (skip mock tokens)
       const token = localStorage.getItem('auth_token');
       if (token && !token.startsWith('mock')) {
-        // Send valid 2-letter uppercase ISO code (e.g. 'EN', 'HI') to backend /api/users/language
-        await apiUserService.updateLanguage(isoCode);
+        await apiUserService.updateLanguage(isoCode).catch((err) => {
+          console.warn('[LanguageContext] Preferred language backend sync warning:', err?.message || err);
+        });
       }
     } catch (err) {
-      console.warn('[LanguageContext] Preferred language update warning:', err?.message || err);
+      console.error('[LanguageContext] Failed to change language:', err);
+    } finally {
+      await queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey[0];
+          return ['comments', 'notifications', 'profile', 'chatMessages'].includes(key);
+        },
+      });
+
+      setTimeout(() => {
+        setIsTranslating(false);
+      }, 300);
     }
-
-    if (!hasHardcodedDict(normalized) && normalized !== 'English') {
-      try {
-        const translated = await batchTranslateUI(normalized);
-        translated._lang = normalized;
-        setDynamicUI(translated);
-        try {
-          localStorage.setItem('mka_dynamic_ui', JSON.stringify(translated));
-        } catch {}
-      } catch (err) {
-        console.warn('[LanguageContext] Dynamic UI translation warning:', err?.message);
-      }
-    } else if (normalized === 'English') {
-      setDynamicUI({});
-      try { localStorage.removeItem('mka_dynamic_ui'); } catch {}
-    }
-
-    await queryClient.invalidateQueries({
-      predicate: (query) => {
-        const key = query.queryKey[0];
-        return ['comments', 'notifications', 'profile', 'chatMessages'].includes(key);
-      },
-    });
-
-    setTimeout(() => {
-      setIsTranslating(false);
-    }, 600);
   };
 
-  const t = useCallback((key, defaultText) => {
-    const norm = normalizeLanguage(currentLanguage);
+  /**
+   * Thin wrapper around i18next supporting:
+   * 1. Namespaced keys (e.g. t('nav.home'))
+   * 2. Legacy UI_DICTIONARY keys (e.g. t('home', 'Home'))
+   * 3. Interpolation options (e.g. t('topic.discussionsCount', '{{count}} discussions', { count: 5 }))
+   */
+  const t = useCallback((key, defaultText, options = {}) => {
+    if (!key) return defaultText || '';
 
-    const dict = UI_DICTIONARY[norm] || UI_DICTIONARY[currentLanguage];
-    if (dict && dict[key]) return dict[key];
-
-    if ((dynamicUI._lang === norm || dynamicUI._lang === currentLanguage) && dynamicUI[key]) {
-      return dynamicUI[key];
+    // If options was passed as second argument
+    let opt = options;
+    let def = defaultText;
+    if (typeof defaultText === 'object' && defaultText !== null) {
+      opt = defaultText;
+      def = opt.defaultValue;
     }
 
-    return UI_DICTIONARY['English']?.[key] || defaultText || key;
-  }, [currentLanguage, dynamicUI]);
+    const resolvedKey = LEGACY_KEY_MAP[key] || key;
 
+    // Check if i18next has translation
+    if (i18n.exists(resolvedKey)) {
+      return i18n.t(resolvedKey, opt);
+    }
+    if (i18n.exists(key)) {
+      return i18n.t(key, opt);
+    }
+
+    if (def !== undefined && def !== null) {
+      return def;
+    }
+
+    const fallbackVal = i18n.t(resolvedKey, { defaultValue: def, ...opt });
+    return fallbackVal || key;
+  }, [currentLanguage]);
+
+  /**
+   * ON-DEMAND CONTENT TRANSLATION (User posts, comments, replies).
+   * Unchanged: Calls backend OpenAI endpoint /api/posts/{id}/translate or /api/translation/translate
+   */
   const translateTextAsync = async (text, targetLang = currentLanguage, sourceLang = null) => {
     if (!text || !text.trim()) return text;
     const normTarget = normalizeLanguage(targetLang);
@@ -298,7 +228,7 @@ export function LanguageProvider({ children }) {
       try {
         const result = await apiTranslationService.translateText(text, isoTarget, isoSource);
         const finalVal = result || text;
-        setTranslationCache(prev => ({ ...prev, [cacheKey]: finalVal }));
+        setTranslationCache((prev) => ({ ...prev, [cacheKey]: finalVal }));
         return finalVal;
       } catch (err) {
         return text;

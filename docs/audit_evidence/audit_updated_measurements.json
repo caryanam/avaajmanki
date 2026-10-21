@@ -1,0 +1,647 @@
+{
+  "1536x1024": {
+    "viewport": {
+      "innerWidth": 1536,
+      "innerHeight": 1024,
+      "scrollWidth": 1536,
+      "scrollHeight": 1024,
+      "hasHorizontalScroll": false
+    },
+    "rects": {
+      "appHeader": {
+        "selector": ".app-header",
+        "x": 0,
+        "y": 0,
+        "width": 1536,
+        "height": 69,
+        "top": 0,
+        "right": 1536,
+        "bottom": 69,
+        "left": 0
+      },
+      "appHeaderInner": {
+        "selector": ".app-header-inner",
+        "x": 58,
+        "y": 10,
+        "width": 1420,
+        "height": 48,
+        "top": 10,
+        "right": 1478,
+        "bottom": 58,
+        "left": 58
+      },
+      "mainDesktopGrid": {
+        "selector": ".home-desktop-grid",
+        "x": 58,
+        "y": 69,
+        "width": 1420,
+        "height": 7649,
+        "top": 69,
+        "right": 1478,
+        "bottom": 7718,
+        "left": 58
+      },
+      "leftSidebar": {
+        "selector": ".desktop-left-sidebar",
+        "x": 82,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 322,
+        "bottom": 672,
+        "left": 82
+      },
+      "sidebarMainCard": {
+        "selector": ".sidebar-main-card",
+        "x": 82,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 322,
+        "bottom": 672,
+        "left": 82
+      },
+      "leftNav": {
+        "selector": ".sidebar-nav-list",
+        "x": 83,
+        "y": 88,
+        "width": 238,
+        "height": 313,
+        "top": 88,
+        "right": 321,
+        "bottom": 401,
+        "left": 83
+      },
+      "settingsItem": {
+        "selector": ".sidebar-nav-list .nav-item-btn:last-child",
+        "x": 93,
+        "y": 366,
+        "width": 218,
+        "height": 35,
+        "top": 366,
+        "right": 311,
+        "bottom": 401,
+        "left": 93
+      },
+      "promoCard": {
+        "selector": ".sidebar-promo-section, .sidebar-promo-card",
+        "x": 83,
+        "y": 403,
+        "width": 238,
+        "height": 268,
+        "top": 403,
+        "right": 321,
+        "bottom": 671,
+        "left": 83
+      },
+      "promoArtwork": {
+        "selector": ".promo-artwork-img",
+        "x": 83,
+        "y": 403,
+        "width": 238,
+        "height": 145,
+        "top": 403,
+        "right": 321,
+        "bottom": 548,
+        "left": 83
+      },
+      "rightSidebar": {
+        "selector": ".desktop-right-sidebar",
+        "x": 1124,
+        "y": 87,
+        "width": 330,
+        "height": 713,
+        "top": 87,
+        "right": 1454,
+        "bottom": 800,
+        "left": 1124
+      },
+      "trendingPulse": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(1)",
+        "x": 1124,
+        "y": 87,
+        "width": 330,
+        "height": 253,
+        "top": 87,
+        "right": 1454,
+        "bottom": 340,
+        "left": 1124
+      },
+      "popularTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(2)",
+        "x": 1124,
+        "y": 352,
+        "width": 330,
+        "height": 185,
+        "top": 352,
+        "right": 1454,
+        "bottom": 537,
+        "left": 1124
+      },
+      "exploreTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(3)",
+        "x": 1124,
+        "y": 549,
+        "width": 330,
+        "height": 251,
+        "top": 549,
+        "right": 1454,
+        "bottom": 800,
+        "left": 1124
+      },
+      "heroCarousel": {
+        "selector": ".hero-carousel-card",
+        "x": 344,
+        "y": 87,
+        "width": 758,
+        "height": 235,
+        "top": 87,
+        "right": 1102,
+        "bottom": 322,
+        "left": 344
+      },
+      "feedNavigation": {
+        "selector": ".feed-tabs-row",
+        "x": 344,
+        "y": 338,
+        "width": 758,
+        "height": 41,
+        "top": 338,
+        "right": 1102,
+        "bottom": 379,
+        "left": 344
+      },
+      "postComposer": {
+        "selector": ".post-composer-card",
+        "x": 344,
+        "y": 395,
+        "width": 758,
+        "height": 109,
+        "top": 395,
+        "right": 1102,
+        "bottom": 504,
+        "left": 344
+      }
+    },
+    "styles": {
+      "gridTemplate": {
+        "display": "grid",
+        "grid-template-columns": "240px 758px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "18px 24px 40px"
+      },
+      "headerInner": {
+        "display": "grid",
+        "grid-template-columns": "240px 758px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "0px 24px"
+      },
+      "leftSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "240px",
+        "gap": "12px"
+      },
+      "rightSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "330px",
+        "gap": "12px"
+      }
+    }
+  },
+  "1440x900": {
+    "viewport": {
+      "innerWidth": 1440,
+      "innerHeight": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "hasHorizontalScroll": false
+    },
+    "rects": {
+      "appHeader": {
+        "selector": ".app-header",
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 69,
+        "top": 0,
+        "right": 1440,
+        "bottom": 69,
+        "left": 0
+      },
+      "appHeaderInner": {
+        "selector": ".app-header-inner",
+        "x": 10,
+        "y": 10,
+        "width": 1420,
+        "height": 48,
+        "top": 10,
+        "right": 1430,
+        "bottom": 58,
+        "left": 10
+      },
+      "mainDesktopGrid": {
+        "selector": ".home-desktop-grid",
+        "x": 10,
+        "y": 69,
+        "width": 1420,
+        "height": 7649,
+        "top": 69,
+        "right": 1430,
+        "bottom": 7718,
+        "left": 10
+      },
+      "leftSidebar": {
+        "selector": ".desktop-left-sidebar",
+        "x": 34,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 274,
+        "bottom": 672,
+        "left": 34
+      },
+      "sidebarMainCard": {
+        "selector": ".sidebar-main-card",
+        "x": 34,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 274,
+        "bottom": 672,
+        "left": 34
+      },
+      "leftNav": {
+        "selector": ".sidebar-nav-list",
+        "x": 35,
+        "y": 88,
+        "width": 238,
+        "height": 313,
+        "top": 88,
+        "right": 273,
+        "bottom": 401,
+        "left": 35
+      },
+      "settingsItem": {
+        "selector": ".sidebar-nav-list .nav-item-btn:last-child",
+        "x": 45,
+        "y": 366,
+        "width": 218,
+        "height": 35,
+        "top": 366,
+        "right": 263,
+        "bottom": 401,
+        "left": 45
+      },
+      "promoCard": {
+        "selector": ".sidebar-promo-section, .sidebar-promo-card",
+        "x": 35,
+        "y": 403,
+        "width": 238,
+        "height": 268,
+        "top": 403,
+        "right": 273,
+        "bottom": 671,
+        "left": 35
+      },
+      "promoArtwork": {
+        "selector": ".promo-artwork-img",
+        "x": 35,
+        "y": 403,
+        "width": 238,
+        "height": 145,
+        "top": 403,
+        "right": 273,
+        "bottom": 548,
+        "left": 35
+      },
+      "rightSidebar": {
+        "selector": ".desktop-right-sidebar",
+        "x": 1076,
+        "y": 87,
+        "width": 330,
+        "height": 713,
+        "top": 87,
+        "right": 1406,
+        "bottom": 800,
+        "left": 1076
+      },
+      "trendingPulse": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(1)",
+        "x": 1076,
+        "y": 87,
+        "width": 330,
+        "height": 253,
+        "top": 87,
+        "right": 1406,
+        "bottom": 340,
+        "left": 1076
+      },
+      "popularTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(2)",
+        "x": 1076,
+        "y": 352,
+        "width": 330,
+        "height": 185,
+        "top": 352,
+        "right": 1406,
+        "bottom": 537,
+        "left": 1076
+      },
+      "exploreTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(3)",
+        "x": 1076,
+        "y": 549,
+        "width": 330,
+        "height": 251,
+        "top": 549,
+        "right": 1406,
+        "bottom": 800,
+        "left": 1076
+      },
+      "heroCarousel": {
+        "selector": ".hero-carousel-card",
+        "x": 296,
+        "y": 87,
+        "width": 758,
+        "height": 235,
+        "top": 87,
+        "right": 1054,
+        "bottom": 322,
+        "left": 296
+      },
+      "feedNavigation": {
+        "selector": ".feed-tabs-row",
+        "x": 296,
+        "y": 338,
+        "width": 758,
+        "height": 41,
+        "top": 338,
+        "right": 1054,
+        "bottom": 379,
+        "left": 296
+      },
+      "postComposer": {
+        "selector": ".post-composer-card",
+        "x": 296,
+        "y": 395,
+        "width": 758,
+        "height": 109,
+        "top": 395,
+        "right": 1054,
+        "bottom": 504,
+        "left": 296
+      }
+    },
+    "styles": {
+      "gridTemplate": {
+        "display": "grid",
+        "grid-template-columns": "240px 758px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "18px 24px 40px"
+      },
+      "headerInner": {
+        "display": "grid",
+        "grid-template-columns": "240px 758px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "0px 24px"
+      },
+      "leftSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "240px",
+        "gap": "12px"
+      },
+      "rightSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "330px",
+        "gap": "12px"
+      }
+    }
+  },
+  "1366x768": {
+    "viewport": {
+      "innerWidth": 1366,
+      "innerHeight": 768,
+      "scrollWidth": 1366,
+      "scrollHeight": 768,
+      "hasHorizontalScroll": false
+    },
+    "rects": {
+      "appHeader": {
+        "selector": ".app-header",
+        "x": 0,
+        "y": 0,
+        "width": 1366,
+        "height": 69,
+        "top": 0,
+        "right": 1366,
+        "bottom": 69,
+        "left": 0
+      },
+      "appHeaderInner": {
+        "selector": ".app-header-inner",
+        "x": 0,
+        "y": 10,
+        "width": 1366,
+        "height": 48,
+        "top": 10,
+        "right": 1366,
+        "bottom": 58,
+        "left": 0
+      },
+      "mainDesktopGrid": {
+        "selector": ".home-desktop-grid",
+        "x": 0,
+        "y": 69,
+        "width": 1366,
+        "height": 7649,
+        "top": 69,
+        "right": 1366,
+        "bottom": 7718,
+        "left": 0
+      },
+      "leftSidebar": {
+        "selector": ".desktop-left-sidebar",
+        "x": 24,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 264,
+        "bottom": 672,
+        "left": 24
+      },
+      "sidebarMainCard": {
+        "selector": ".sidebar-main-card",
+        "x": 24,
+        "y": 87,
+        "width": 240,
+        "height": 585,
+        "top": 87,
+        "right": 264,
+        "bottom": 672,
+        "left": 24
+      },
+      "leftNav": {
+        "selector": ".sidebar-nav-list",
+        "x": 25,
+        "y": 88,
+        "width": 238,
+        "height": 313,
+        "top": 88,
+        "right": 263,
+        "bottom": 401,
+        "left": 25
+      },
+      "settingsItem": {
+        "selector": ".sidebar-nav-list .nav-item-btn:last-child",
+        "x": 35,
+        "y": 366,
+        "width": 218,
+        "height": 35,
+        "top": 366,
+        "right": 253,
+        "bottom": 401,
+        "left": 35
+      },
+      "promoCard": {
+        "selector": ".sidebar-promo-section, .sidebar-promo-card",
+        "x": 25,
+        "y": 403,
+        "width": 238,
+        "height": 268,
+        "top": 403,
+        "right": 263,
+        "bottom": 671,
+        "left": 25
+      },
+      "promoArtwork": {
+        "selector": ".promo-artwork-img",
+        "x": 25,
+        "y": 403,
+        "width": 238,
+        "height": 145,
+        "top": 403,
+        "right": 263,
+        "bottom": 548,
+        "left": 25
+      },
+      "rightSidebar": {
+        "selector": ".desktop-right-sidebar",
+        "x": 1012,
+        "y": 87,
+        "width": 330,
+        "height": 713,
+        "top": 87,
+        "right": 1342,
+        "bottom": 800,
+        "left": 1012
+      },
+      "trendingPulse": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(1)",
+        "x": 1012,
+        "y": 87,
+        "width": 330,
+        "height": 253,
+        "top": 87,
+        "right": 1342,
+        "bottom": 340,
+        "left": 1012
+      },
+      "popularTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(2)",
+        "x": 1012,
+        "y": 352,
+        "width": 330,
+        "height": 185,
+        "top": 352,
+        "right": 1342,
+        "bottom": 537,
+        "left": 1012
+      },
+      "exploreTopics": {
+        "selector": ".desktop-right-sidebar .sidebar-widget-card:nth-of-type(3)",
+        "x": 1012,
+        "y": 549,
+        "width": 330,
+        "height": 251,
+        "top": 549,
+        "right": 1342,
+        "bottom": 800,
+        "left": 1012
+      },
+      "heroCarousel": {
+        "selector": ".hero-carousel-card",
+        "x": 286,
+        "y": 87,
+        "width": 704,
+        "height": 235,
+        "top": 87,
+        "right": 990,
+        "bottom": 322,
+        "left": 286
+      },
+      "feedNavigation": {
+        "selector": ".feed-tabs-row",
+        "x": 286,
+        "y": 338,
+        "width": 704,
+        "height": 41,
+        "top": 338,
+        "right": 990,
+        "bottom": 379,
+        "left": 286
+      },
+      "postComposer": {
+        "selector": ".post-composer-card",
+        "x": 286,
+        "y": 395,
+        "width": 704,
+        "height": 109,
+        "top": 395,
+        "right": 990,
+        "bottom": 504,
+        "left": 286
+      }
+    },
+    "styles": {
+      "gridTemplate": {
+        "display": "grid",
+        "grid-template-columns": "240px 704px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "18px 24px 40px"
+      },
+      "headerInner": {
+        "display": "grid",
+        "grid-template-columns": "240px 704px 330px",
+        "gap": "22px",
+        "max-width": "1420px",
+        "padding": "0px 24px"
+      },
+      "leftSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "240px",
+        "gap": "12px"
+      },
+      "rightSidebar": {
+        "position": "sticky",
+        "top": "68px",
+        "width": "330px",
+        "gap": "12px"
+      }
+    }
+  }
+}

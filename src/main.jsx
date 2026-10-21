@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './i18n.js';
 import App from './App.jsx';
 
 // Route localStorage to sessionStorage for multi-tab multi-account session isolation

@@ -108,3 +108,52 @@
     padding: 10px;
   }
 }
+
+/* ── RTL SUPPORT ──────────────────────────────────── */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="rtl"] .sidebar-left {
+  left: auto;
+  right: 16px;
+}
+
+[dir="rtl"] .nav-item-left {
+  flex-direction: row;
+}
+
+[dir="rtl"] .nav-badge {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+[dir="rtl"] .header-search-icon {
+  left: auto !important;
+  right: 14px !important;
+}
+
+[dir="rtl"] .header-search-shortcut {
+  right: auto !important;
+  left: 12px !important;
+}
+
+[dir="rtl"] .header-search-input {
+  padding-left: 70px !important;
+  padding-right: 40px !important;
+}
+
+[dir="rtl"] .header-actions {
+  flex-direction: row;
+}
+
+[dir="rtl"] .feed-filter-btn {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+[dir="rtl"] .desktop-left-sidebar {
+  border-right: none;
+  border-left: 1px solid var(--border-light, #E2D7D7);
+}
+

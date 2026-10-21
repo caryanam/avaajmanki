@@ -31,11 +31,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      const publicPaths = ['/', '', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/child-safety', '/child-safety-standards', '/contact', '/faq', '/delete-account', '/login', '/admin/login', '/register', '/forgot-password'];
+      const publicPaths = ['/', '', '/home', '/explore', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/child-safety', '/child-safety-standards', '/contact', '/faq', '/delete-account', '/login', '/admin/login', '/register', '/forgot-password'];
       const currentPath = window.location.pathname.split('?')[0].replace(/\/+$/, '') || '/';
+      const isPublic = publicPaths.includes(currentPath) || currentPath.startsWith('/pulse') || currentPath.startsWith('/topic') || currentPath.startsWith('/post') || currentPath.startsWith('/explore');
       
-      // Do not clear tokens or force redirect if user is actively on public pages like /login
-      if (!publicPaths.includes(currentPath)) {
+      // Do not clear tokens or force redirect if user is actively on public pages like /login, /pulse
+      if (!isPublic) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
         localStorage.removeItem('mka_admin_logged_in');

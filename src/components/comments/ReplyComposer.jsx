@@ -1,10 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ModerationIndicator } from '../common/ModerationIndicator.jsx';
-import { Smile, Mic, MicOff, Loader2, Send, X } from 'lucide-react';
+import { Smile, Mic, MicOff, Loader2, Send, X, ImagePlus } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { useSpokenLanguage } from '../../hooks/useSpokenLanguage.js';
 import { useVoiceRecorder } from '../../hooks/useVoiceRecorder.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
+import { apiClient } from '../../services/apiClient.js';
+import { getMediaUrl } from '../../config/env.js';
 import { moderationCheck } from '../../utils/moderationCheck.js';
 
 const EMOJI_CATEGORIES = [
@@ -46,13 +49,18 @@ const EMOJI_CATEGORIES = [
 export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onCancel }) {
   const { currentLanguage, t } = useLanguage();
   const { currentUser } = useAuth();
+  const { addToast } = useToast();
   const [spokenLanguage] = useSpokenLanguage();
   const initialTag = targetUsername ? (targetUsername.startsWith('@') ? `${targetUsername} ` : `@${targetUsername} `) : '';
   const [text, setText] = useState(initialTag);
+  const [imageUrl, setImageUrl] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [activeCategory, setActiveCategory] = useState(0);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (inputRef.current) {
@@ -82,22 +90,41 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
 
   const minLength = 2;
   const maxLength = 1000;
-  const isValid = text.trim().length >= minLength && text.length <= maxLength;
+  const hasValidText = text.trim().length >= minLength && text.length <= maxLength;
+  const isValid = hasValidText || Boolean(imageUrl);
   const modCheck = moderationCheck(text);
   const isBlocked = modCheck.status === 'BLOCKED';
 
+  const handleImage = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const response = await apiClient.post('/api/upload/image', body, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setImageUrl(response.data?.data?.imageUrl || '');
+    } catch (error) {
+      addToast(error?.response?.data?.message || t('imageUploadFailed', 'Failed to upload image.'), 'error');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    if (!isValid || isBlocked || submitting) return;
+    if (!isValid || isBlocked || submitting || isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setSubmitting(true);
     try {
-      await onSubmit(text.trim());
+      await onSubmit(text.trim(), imageUrl || null);
       setText('');
+      setImageUrl('');
       setShowEmojis(false);
     } catch (err) {
-      console.error(err);
+      console.error('Failed to submit reply:', err);
     } finally {
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -169,7 +196,7 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           }}
         />
 
-        {/* Right Icons: Cancel X + Mic (Press & Hold) + Send Arrow */}
+        {/* Right Icons: Cancel X + Image Attach + Mic (Press & Hold) + Send Arrow */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
           {onCancel && (
             <button
@@ -191,6 +218,39 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
               <X size={16} />
             </button>
           )}
+
+          {/* Image Attachment Button & Hidden File Input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImage(file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage || submitting}
+            title={t('attachImage', 'Attach image')}
+            aria-label={t('attachImage', 'Attach image')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '50%',
+              color: imageUrl ? '#6F405F' : '#8C8385',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {uploadingImage ? <Loader2 size={16} className="spin-animation" /> : <ImagePlus size={16} />}
+          </button>
 
           <button
             type="button"
@@ -235,6 +295,36 @@ export function ReplyComposer({ commentId, postId, targetUsername, onSubmit, onC
           </button>
         </div>
       </div>
+
+      {/* Attached Image Preview */}
+      {imageUrl && (
+        <div style={{ position: 'relative', width: 76, marginLeft: 12, marginTop: 4 }}>
+          <img
+            src={getMediaUrl(imageUrl)}
+            alt={t('imagePreview', 'Image preview')}
+            style={{ width: 76, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid #D4CECC' }}
+          />
+          <button
+            type="button"
+            onClick={() => setImageUrl('')}
+            aria-label={t('removeImage', 'Remove image')}
+            style={{
+              position: 'absolute',
+              right: -6,
+              top: -6,
+              border: 0,
+              borderRadius: '50%',
+              background: '#2D1D15',
+              color: '#fff',
+              display: 'flex',
+              padding: 3,
+              cursor: 'pointer',
+            }}
+          >
+            <X size={10} />
+          </button>
+        </div>
+      )}
 
       {/* Emoji Picker Popover */}
       {showEmojis && (

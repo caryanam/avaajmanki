@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Shield, LayoutDashboard, Flag, FileCheck, ShieldAlert, Users, BarChart3, Settings, FileText, LogOut, Bell, ChevronDown, RefreshCw, AlertTriangle, CheckCircle, Clock, Menu, X, Inbox, Music2 } from 'lucide-react';
+import { Shield, LayoutDashboard, Flag, FileCheck, ShieldAlert, Users, BarChart3, Settings, FileText, LogOut, Bell, ChevronDown, RefreshCw, AlertTriangle, CheckCircle, Clock, Menu, X, Inbox, Music2, Radio } from 'lucide-react';
 import logoMKA from '../../assets/logo_MKA.png';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
@@ -32,6 +32,12 @@ export function AdminLayout({ children, activeRoute, onNavigate, onRefresh, refr
         { label: 'Content Review', icon: FileCheck, route: '/admin/content-review' },
         { label: 'Blocked Footprints', icon: ShieldAlert, route: '/admin/blocked-content' },
         { label: 'User Enquiries', icon: Inbox, route: '/admin/enquiries' },
+      ],
+    },
+    {
+      title: 'EDITORIAL & PULSE',
+      items: [
+        { label: 'Pulse Editorial Hub', icon: Radio, route: '/admin/pulse' },
       ],
     },
     {

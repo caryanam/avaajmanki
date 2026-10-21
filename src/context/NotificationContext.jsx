@@ -5,8 +5,7 @@ import { useAuth } from './AuthContext.jsx';
 import { useToast } from './ToastContext.jsx';
 import { playNotificationSound } from '../utils/soundUtil.js';
 
-import { io } from 'socket.io-client';
-import { SOCKET_URL } from '../config/env.js';
+import { getOrCreateSocket } from '../services/socketService.js';
 
 const NotificationContext = createContext(null);
 
@@ -90,7 +89,7 @@ export function NotificationProvider({ children }) {
     } finally {
       if (requestRef.current === requestUserId) requestRef.current = null;
     }
-  }, [currentUser, addToast]);
+  }, [currentUser?.id, addToast]);
 
 
   // Socket events keep the list fresh; polling is only a visible-tab fallback.
@@ -104,14 +103,14 @@ export function NotificationProvider({ children }) {
       if (!socketConnectedRef.current && document.visibilityState === 'visible') refreshNotifications();
     }, 30000);
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refreshNotifications();
+      if (!socketConnectedRef.current && document.visibilityState === 'visible') refreshNotifications();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [refreshNotifications, currentUser]);
+  }, [refreshNotifications, currentUser?.id]);
 
   // Real-time Socket.IO notification listener
   useEffect(() => {
@@ -120,23 +119,25 @@ export function NotificationProvider({ children }) {
     const token = localStorage.getItem('auth_token') || currentUser.token;
     if (!token) return;
 
-    const socket = io(SOCKET_URL, {
-      transports: ['polling', 'websocket'],
-      query: { token },
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    });
+    const socket = getOrCreateSocket(token, currentUser);
+    if (!socket) return;
 
-    socket.on('connect', () => {
+    const handleConnect = () => {
       socketConnectedRef.current = true;
       socket.emit('join_user_room', String(currentUser.id));
       refreshNotifications();
-    });
-    socket.on('disconnect', () => { socketConnectedRef.current = false; });
+    };
 
-    socket.on('new_notification', (newNotif) => {
+    const handleDisconnect = () => {
+      socketConnectedRef.current = false;
+    };
+
+    if (socket.connected) {
+      socketConnectedRef.current = true;
+      socket.emit('join_user_room', String(currentUser.id));
+    }
+
+    const handleNewNotification = (newNotif) => {
       const type = (newNotif?.type || '').toUpperCase();
 
       // Skip chat messages from Bell notification processing
@@ -184,13 +185,19 @@ export function NotificationProvider({ children }) {
       if (prefs.soundAlerts !== false) {
         playNotificationSound();
       }
-    });
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('new_notification', handleNewNotification);
 
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('new_notification', handleNewNotification);
       socketConnectedRef.current = false;
-      socket.disconnect();
     };
-  }, [currentUser, refreshNotifications, addToast, getUserNotifPrefs]);
+  }, [currentUser?.id, refreshNotifications, addToast, getUserNotifPrefs]);
 
   const markAsRead = async (id) => {
     await apiNotificationService.markAsRead(id);

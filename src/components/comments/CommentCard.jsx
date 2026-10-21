@@ -39,7 +39,7 @@ const emojiMap = {
 export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, onReplySubmit, isActiveReply, onReplyToggle }) {
   const { currentUser } = useAuth();
   const { updateComment, deleteComment, createReply, reactToComment, activeReplyCommentId, setActiveReplyCommentId } = useComments();
-  const { blockUser, blockedUsers = [], mutedUsers = [] } = useReports();
+  const { blockUser, blockedUsers = [], mutedUsers = [], isBlocked, isMuted } = useReports();
   const { t, currentLanguage, translateTextAsync } = useLanguage();
   const { addToast } = useToast();
 
@@ -67,18 +67,22 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     setLocalShowReplyComposer(open);
   };
 
-  const isBlockedOrMuted = (() => {
-    const author = (comment.username || '').toLowerCase().replace(/^@/, '').trim();
-    if (!author) return false;
-    const isB = (blockedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
-    const isM = (mutedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
-    return isB || isM;
-  })();
+  const isBlockedOrMuted = (isBlocked && isMuted)
+    ? (isBlocked(comment.username) || isMuted(comment.username))
+    : (() => {
+      const author = (comment.username || '').toLowerCase().replace(/^@/, '').trim();
+      if (!author) return false;
+      const isB = (blockedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
+      const isM = (mutedUsers || []).some(u => String(u).toLowerCase().replace(/^@/, '').trim() === author);
+      return isB || isM;
+    })();
 
   const isOwner = Boolean(
-    currentUser && (
-      (currentUser.id && comment.userId && String(currentUser.id) === String(comment.userId)) ||
-      (currentUser.username && comment.username && currentUser.username.toLowerCase() === comment.username.toLowerCase())
+    comment.isOwnComment || (
+      currentUser && (
+        (currentUser.id && comment.userId && String(currentUser.id) === String(comment.userId)) ||
+        (currentUser.username && comment.username && currentUser.username.toLowerCase() === comment.username.toLowerCase())
+      )
     )
   );
 
@@ -141,9 +145,9 @@ export function CommentCard({ comment, postId, postAuthorUsername, onNavigate, o
     addToast('Comment copied to clipboard.', 'info');
   };
 
-  const handleAddReply = async (replyText) => {
-    if (onReplySubmit) await onReplySubmit(comment.id, replyText);
-    else await createReply(comment.id, postId, replyText, comment.username);
+  const handleAddReply = async (replyText, replyImageUrl = null) => {
+    if (onReplySubmit) await onReplySubmit(comment.id, replyText, replyImageUrl);
+    else await createReply(comment.id, postId, replyText, comment.username, replyImageUrl);
     toggleReplyComposer(false);
   };
 

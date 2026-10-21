@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "test": "node --test src/config/musicMoods.test.js src/utils/musicSession.test.js src/utils/musicQueue.test.js src/utils/musicPlayback.test.js src/utils/notificationNavigation.test.js",
+    "i18n:generate": "node scripts/generate-locales.cjs",
+    "test": "node --test src/config/musicMoods.test.js src/utils/musicSession.test.js src/utils/musicQueue.test.js src/utils/musicPlayback.test.js src/context/MoodMusicContext.test.js src/components/music/PremiumBottomPlayer.test.js src/utils/notificationNavigation.test.js src/services/apiAdminPulseService.test.js src/components/comments/CommentComposer.test.js src/components/comments/OptimisticReply.test.js src/components/pulse/PulseCommentManagement.test.js src/components/explore/ExplorePage.test.js src/components/topic-discussion/TopicDiscussionPage.test.js src/components/explore/CommunityDiscussionFlow.test.js src/components/topics/TopicCreateModal.test.js src/pages/user/SettingsPage.test.js src/hooks/useUserModeration.test.js src/utils/normalizeReaction.test.js src/pages/user/EditProfilePage.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,10 +17,13 @@
     "@tanstack/react-query": "^5.101.4",
     "@types/three": "^0.185.1",
     "axios": "^1.18.1",
+    "emoji-picker-react": "^5.0.0",
     "framer-motion": "^12.43.0",
+    "i18next": "^26.5.2",
     "lucide-react": "^1.27.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.1.0",
     "socket.io-client": "^4.8.3",
     "three": "^0.185.1",
     "zod": "^4.4.3",
@@ -30,6 +34,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
+    "playwright": "^1.64.0",
     "vite": "^8.1.1"
   }
 }

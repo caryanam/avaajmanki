@@ -9,13 +9,13 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
   const navItems = [
     {
       icon: Home,
-      label: t('home'),
+      label: t('nav.home', 'Home'),
       route: '/home',
       badge: false,
     },
     {
       icon: Compass,
-      label: t('explore'),
+      label: t('nav.explore', 'Explore'),
       route: '/explore',
       badge: false,
     },
@@ -27,13 +27,13 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
     },
     {
       icon: Music2,
-      label: t('music', 'Music'),
+      label: t('nav.music', 'Music'),
       route: '/music',
       badge: false,
     },
     {
       icon: User,
-      label: t('profile'),
+      label: t('nav.profile', 'Profile'),
       route: currentUser ? `/profile/${currentUser.username?.replace('@', '') || 'me'}` : '/login',
       badge: false,
       routePrefix: '/profile',
@@ -46,8 +46,7 @@ export function MobileNavigation({ activeRoute, onNavigate }) {
       style={{
         position: 'fixed',
         bottom: 0,
-        left: 0,
-        right: 0,
+        insetInline: 0,
         height: 'calc(60px + env(safe-area-inset-bottom))',
         paddingBottom: 'env(safe-area-inset-bottom)',
         backgroundColor: 'var(--pure-white)',

@@ -107,11 +107,11 @@ export function ToastContainer() {
       className="no-scrollbar"
       style={{
         position: 'fixed',
-        bottom: '24px',
+        top: '24px',
         right: '24px',
         zIndex: 9999,
         display: 'flex',
-        flexDirection: 'column', // Newest added at bottom, older pushed upwards
+        flexDirection: 'column',
         gap: '10px',
         maxWidth: '380px',
         width: 'calc(100vw - 48px)',

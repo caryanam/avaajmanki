@@ -10,18 +10,54 @@ import { moderationCheck } from '../../utils/moderationCheck.js';
 import { generateUsernameSuggestions } from '../../utils/generateUsername.js';
 import { useToast } from '../../context/ToastContext.jsx';
 
+export function canSaveProfile({
+  currentUsername,
+  initialUsername,
+  bio,
+  initialBio,
+  preferredLang,
+  initialLang,
+  isBlocked,
+  submitting,
+}) {
+  if (submitting || isBlocked) return false;
+  const username = (currentUsername || '').trim();
+  if (!username) return false;
+
+  const usernameChanged = username !== (initialUsername || '').trim();
+  const bioChanged = (bio || '').trim() !== (initialBio || '').trim();
+  const langChanged = (preferredLang || '').trim() !== (initialLang || '').trim();
+
+  return usernameChanged || bioChanged || langChanged;
+}
+
 export function EditProfilePage({ onNavigate }) {
   const { currentUser, updateProfile } = useAuth();
   const { currentLanguage, changeLanguage, supportedLanguages, t } = useLanguage();
   const { addToast } = useToast();
 
-  const [currentUsername, setCurrentUsername] = useState(currentUser?.username || '@user');
-  const [bio, setBio] = useState(currentUser?.bio || '');
-  const [preferredLang, setPreferredLang] = useState(currentUser?.preferredLanguage || currentLanguage || 'English');
+  const initialUsername = currentUser?.username || '@user';
+  const initialBio = currentUser?.bio || '';
+  const initialLang = currentUser?.preferredLanguage || currentLanguage || 'English';
+
+  const [currentUsername, setCurrentUsername] = useState(initialUsername);
+  const [bio, setBio] = useState(initialBio);
+  const [preferredLang, setPreferredLang] = useState(initialLang);
   const [submitting, setSubmitting] = useState(false);
 
   const modResult = moderationCheck(bio);
   const isBlocked = modResult.status === 'BLOCKED';
+
+  const canSave = canSaveProfile({
+    currentUsername,
+    initialUsername,
+    bio,
+    initialBio,
+    preferredLang,
+    initialLang,
+    isBlocked,
+    submitting,
+  });
 
   const getDaysLeftForChange = () => {
     const userId = currentUser?.id || currentUser?.userId;
@@ -49,7 +85,7 @@ export function EditProfilePage({ onNavigate }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (isBlocked) return;
+    if (!canSave) return;
 
     setSubmitting(true);
     try {
@@ -171,7 +207,7 @@ export function EditProfilePage({ onNavigate }) {
             <Button type="button" variant="secondary" onClick={() => onNavigate('/settings')}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isBlocked || submitting} icon={Save}>
+            <Button type="submit" variant="primary" disabled={!canSave} icon={Save}>
               {submitting ? 'Saving...' : 'Save Profile'}
             </Button>
           </div>

@@ -48,19 +48,65 @@ export function MoodMusicProvider({ children }) {
   const identityRef = useRef(null);
   const shuffleEnabledRef = useRef(false);
   const repeatModeRef = useRef(REPEAT_MODES.OFF);
+  const requestTokenRef = useRef(0);
+  const stallWatchdogRef = useRef(null);
+  const callbacksRef = useRef({});
+
+  const clearStallWatchdog = useCallback(() => {
+    if (stallWatchdogRef.current) {
+      clearTimeout(stallWatchdogRef.current);
+      stallWatchdogRef.current = null;
+    }
+  }, []);
+
+  const startStallWatchdog = useCallback(() => {
+    clearStallWatchdog();
+    stallWatchdogRef.current = setTimeout(() => {
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.setPlaybackError?.("Couldn't load this track. Please retry or skip.");
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        try {
+          audio.pause();
+        } catch (_) {
+          // ignore
+        }
+      }
+    }, 8000);
+  }, [clearStallWatchdog]);
 
   const resetPlayer = useCallback(() => {
+    clearStallWatchdog();
+    requestTokenRef.current++;
     const audio = audioRef.current;
-    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
+    if (audio) {
+      try {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      } catch (_) {
+        // ignore
+      }
+    }
     sourceQueueRef.current = [];
     queueRef.current = [];
     trackIndexRef.current = -1;
     currentTrackRef.current = null;
-    setSourceQueue([]); setQueue([]); setTrackIndex(-1); setCurrentTrack(null); setIsPlaying(false); setIsWidgetOpen(false);
-    setProgress(0); setDuration(0); setIsBuffering(false); setPlaybackError('');
-    shuffleEnabledRef.current = false; repeatModeRef.current = REPEAT_MODES.OFF;
-    setShuffleEnabled(DEFAULT_PLAYBACK_MODES.shuffleEnabled); setRepeatMode(DEFAULT_PLAYBACK_MODES.repeatMode);
-  }, []);
+    setSourceQueue([]);
+    setQueue([]);
+    setTrackIndex(-1);
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setIsWidgetOpen(false);
+    setProgress(0);
+    setDuration(0);
+    setIsBuffering(false);
+    setPlaybackError('');
+    shuffleEnabledRef.current = false;
+    repeatModeRef.current = REPEAT_MODES.OFF;
+    setShuffleEnabled(DEFAULT_PLAYBACK_MODES.shuffleEnabled);
+    setRepeatMode(DEFAULT_PLAYBACK_MODES.repeatMode);
+  }, [clearStallWatchdog]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -86,7 +132,9 @@ export function MoodMusicProvider({ children }) {
   }, [userId]);
 
   const playAt = useCallback(async (index, nextQueue = queueRef.current) => {
-    const tracks = Array.isArray(nextQueue) ? nextQueue.filter((track) => track?.audioUrl) : [];
+    const tracks = Array.isArray(nextQueue)
+      ? nextQueue.filter((track) => track?.audioUrl || track?.publicAudioUrl || track?.privateAudioUrl)
+      : [];
     if (!tracks.length) {
       setPlaybackError('This track has no playable audio source.');
       return;
@@ -101,15 +149,19 @@ export function MoodMusicProvider({ children }) {
       || targetTrack.artworkUrl
       || targetTrack.albumImage;
     const resolvedCover = coverSource ? getMediaUrl(coverSource) : defaultCoverAsset;
-    
+
     const track = {
       ...targetTrack,
+      id: String(targetTrack.id),
       audioUrl: resolvedUrl,
       coverUrl: resolvedCover,
     };
 
     const audio = audioRef.current;
     if (!audio) return;
+
+    const token = ++requestTokenRef.current;
+    clearStallWatchdog();
 
     queueRef.current = tracks;
     trackIndexRef.current = safeIndex;
@@ -122,21 +174,60 @@ export function MoodMusicProvider({ children }) {
     setDuration(track.durationSeconds || 0);
     setIsBuffering(true);
     setIsWidgetOpen(true);
+    startStallWatchdog();
 
     audio.src = resolvedUrl;
     audio.load();
+
     try {
       await audio.play();
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(true);
+      setIsBuffering(false);
+      setPlaybackError('');
     } catch (error) {
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
       setIsPlaying(false);
       setIsBuffering(false);
+      if (error?.name === 'AbortError') {
+        return;
+      }
       setPlaybackError(error?.name === 'NotAllowedError'
         ? 'Playback was blocked by the browser. Press play to continue.'
         : 'Unable to play this track. Please try another track.');
     }
-  }, []);
+  }, [clearStallWatchdog, startStallWatchdog]);
 
   playAtRef.current = playAt;
+
+  const retry = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrackRef.current) return;
+    const token = ++requestTokenRef.current;
+    setPlaybackError('');
+    setIsBuffering(true);
+    startStallWatchdog();
+    try {
+      audio.load();
+      await audio.play();
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(true);
+      setIsBuffering(false);
+      setPlaybackError('');
+    } catch (err) {
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(false);
+      setIsBuffering(false);
+      if (err?.name === 'AbortError') return;
+      setPlaybackError(err?.name === 'NotAllowedError'
+        ? 'Playback was blocked by the browser. Press play to continue.'
+        : 'Unable to play this track. Please try again.');
+    }
+  }, [clearStallWatchdog, startStallWatchdog]);
 
   const replayCurrent = useCallback(async () => {
     const audio = audioRef.current;
@@ -145,14 +236,22 @@ export function MoodMusicProvider({ children }) {
     setProgress(0);
     setPlaybackError('');
     setIsBuffering(true);
+    const token = ++requestTokenRef.current;
+    startStallWatchdog();
     try {
       await audio.play();
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(true);
+      setIsBuffering(false);
     } catch {
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
       setIsPlaying(false);
       setIsBuffering(false);
       setPlaybackError('Unable to replay this track. Please try another track.');
     }
-  }, []);
+  }, [clearStallWatchdog, startStallWatchdog]);
 
   const advanceTrack = useCallback((naturalEnd = false) => {
     const tracks = queueRef.current;
@@ -181,12 +280,14 @@ export function MoodMusicProvider({ children }) {
       return;
     }
     if (naturalEnd) {
+      clearStallWatchdog();
       setIsPlaying(false);
       setIsBuffering(false);
     }
-  }, [replayCurrent]);
+  }, [clearStallWatchdog, replayCurrent]);
 
   const nextTrack = useCallback(() => advanceTrack(false), [advanceTrack]);
+  const skip = useCallback(() => advanceTrack(false), [advanceTrack]);
 
   nextRef.current = advanceTrack;
 
@@ -201,6 +302,19 @@ export function MoodMusicProvider({ children }) {
     if (action.type === 'PLAY' || action.type === 'WRAP') playAtRef.current(action.index, tracks);
   }, []);
 
+  // Keep all state setters and watchdog handlers in callbacksRef for the audio element listeners
+  useEffect(() => {
+    callbacksRef.current = {
+      setDuration,
+      setProgress,
+      setIsBuffering,
+      setIsPlaying,
+      setPlaybackError,
+      clearStallWatchdog,
+      startStallWatchdog,
+    };
+  });
+
   useEffect(() => {
     const audio = new Audio();
     audio.preload = 'metadata';
@@ -209,63 +323,122 @@ export function MoodMusicProvider({ children }) {
 
     const updateTime = () => {
       const actualDuration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      setDuration(actualDuration);
-      setProgress(actualDuration ? (audio.currentTime / actualDuration) * 100 : 0);
+      callbacksRef.current.setDuration?.(actualDuration);
+      callbacksRef.current.setProgress?.(actualDuration ? (audio.currentTime / actualDuration) * 100 : 0);
     };
-    const updateMetadata = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
-    const markBuffering = () => setIsBuffering(true);
+    const updateMetadata = () => callbacksRef.current.setDuration?.(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const markBuffering = () => {
+      callbacksRef.current.setIsBuffering?.(true);
+      callbacksRef.current.startStallWatchdog?.();
+    };
+    const markPlay = () => {
+      callbacksRef.current.setIsPlaying?.(true);
+    };
     const markPlaying = () => {
-      setIsPlaying(true);
-      setIsBuffering(false);
-      setPlaybackError('');
+      callbacksRef.current.setIsPlaying?.(true);
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.setPlaybackError?.('');
+      callbacksRef.current.clearStallWatchdog?.();
     };
-    const markPaused = () => setIsPlaying(false);
-    const markReady = () => setIsBuffering(false);
+    const markPaused = () => {
+      callbacksRef.current.setIsPlaying?.(false);
+      callbacksRef.current.clearStallWatchdog?.();
+    };
+    const markReady = () => {
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.clearStallWatchdog?.();
+    };
+    const markSeeking = () => {
+      callbacksRef.current.setIsBuffering?.(true);
+    };
+    const markSeeked = () => {
+      callbacksRef.current.setIsBuffering?.(false);
+    };
     const markError = () => {
-      setIsPlaying(false);
-      setIsBuffering(false);
-      setPlaybackError('Unable to play this track. The audio may be unavailable.');
+      callbacksRef.current.setIsPlaying?.(false);
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.clearStallWatchdog?.();
+      callbacksRef.current.setPlaybackError?.('Unable to play this track. The audio may be unavailable.');
     };
-    const handleEnded = () => nextRef.current(true);
+    const markAbortedOrEmptied = () => {
+      callbacksRef.current.setIsPlaying?.(false);
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.clearStallWatchdog?.();
+    };
+    const handleEnded = () => {
+      callbacksRef.current.setIsPlaying?.(false);
+      callbacksRef.current.setIsBuffering?.(false);
+      callbacksRef.current.clearStallWatchdog?.();
+      nextRef.current(true);
+    };
 
     audio.addEventListener('timeupdate', updateTime);
     audio.addEventListener('loadedmetadata', updateMetadata);
+    audio.addEventListener('play', markPlay);
+    audio.addEventListener('playing', markPlaying);
     audio.addEventListener('waiting', markBuffering);
     audio.addEventListener('stalled', markBuffering);
-    audio.addEventListener('playing', markPlaying);
+    audio.addEventListener('seeking', markSeeking);
+    audio.addEventListener('seeked', markSeeked);
     audio.addEventListener('canplay', markReady);
     audio.addEventListener('pause', markPaused);
     audio.addEventListener('error', markError);
+    audio.addEventListener('abort', markAbortedOrEmptied);
+    audio.addEventListener('emptied', markAbortedOrEmptied);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
+      callbacksRef.current.clearStallWatchdog?.();
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateMetadata);
+      audio.removeEventListener('play', markPlay);
+      audio.removeEventListener('playing', markPlaying);
+      audio.removeEventListener('waiting', markBuffering);
+      audio.removeEventListener('stalled', markBuffering);
+      audio.removeEventListener('seeking', markSeeking);
+      audio.removeEventListener('seeked', markSeeked);
+      audio.removeEventListener('canplay', markReady);
+      audio.removeEventListener('pause', markPaused);
+      audio.removeEventListener('error', markError);
+      audio.removeEventListener('abort', markAbortedOrEmptied);
+      audio.removeEventListener('emptied', markAbortedOrEmptied);
+      audio.removeEventListener('ended', handleEnded);
+      try {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      } catch (_) {
+        // ignore
+      }
       audioRef.current = null;
     };
   }, []);
 
-  const playTrack = useCallback((track, visibleQueue = []) => {
-    const playbackIndex = queueRef.current.findIndex((item) => item.id === track.id);
-    if (playbackIndex >= 0) return playAt(playbackIndex, queueRef.current);
+  const playTrack = useCallback((track, incomingQueue = []) => {
+    if (!track) return;
+    const targetId = String(track.id);
 
-    const browsingQueue = dedupeTracksById(
-      visibleQueue.some((item) => item.id === track.id) ? visibleQueue : [track, ...visibleQueue],
-    ).filter((item) => item?.audioUrl);
-    sourceQueueRef.current = browsingQueue;
-    setSourceQueue(browsingQueue);
-    const tracks = derivePlaybackQueue({
-      sourceQueue: browsingQueue,
-      shuffleEnabled: shuffleEnabledRef.current,
-      currentTrack: track,
-    });
-    const index = tracks.findIndex((item) => item.id === track.id);
-    return playAt(index < 0 ? 0 : index, tracks);
+    // Filter tracks without audioUrl and keep the queue exactly as passed
+    const rawQueue = (Array.isArray(incomingQueue) && incomingQueue.length > 0)
+      ? incomingQueue
+      : (queueRef.current && queueRef.current.length > 0 ? queueRef.current : [track]);
+
+    const sanitizedQueue = dedupeTracksById(
+      rawQueue.some((item) => String(item?.id) === targetId) ? rawQueue : [track, ...rawQueue]
+    ).filter((item) => item?.audioUrl || item?.publicAudioUrl || item?.privateAudioUrl);
+
+    sourceQueueRef.current = sanitizedQueue;
+    setSourceQueue(sanitizedQueue);
+
+    // Recompute index AFTER filtering based on String(id)
+    const targetIndex = sanitizedQueue.findIndex((item) => String(item?.id) === targetId);
+    const indexToPlay = targetIndex >= 0 ? targetIndex : 0;
+
+    return playAt(indexToPlay, sanitizedQueue);
   }, [playAt]);
 
   const replaceQueuePreservingCurrentTrack = useCallback((newQueue) => {
-    const source = dedupeTracksById(newQueue).filter((track) => track?.audioUrl);
+    const source = dedupeTracksById(newQueue).filter((track) => track?.audioUrl || track?.publicAudioUrl || track?.privateAudioUrl);
     const current = currentTrackRef.current;
     const tracks = derivePlaybackQueue({
       sourceQueue: source,
@@ -309,20 +482,39 @@ export function MoodMusicProvider({ children }) {
 
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-    if (!audio.paused) {
+    if (!audio || !currentTrackRef.current) return;
+    if (!audio.paused && !audio.ended) {
       audio.pause();
+      setIsPlaying(false);
+      clearStallWatchdog();
       return;
     }
+    if (audio.ended || (audio.duration && audio.currentTime >= audio.duration)) {
+      audio.currentTime = 0;
+      setProgress(0);
+    }
+    const token = ++requestTokenRef.current;
     setPlaybackError('');
     setIsBuffering(true);
+    startStallWatchdog();
     try {
       await audio.play();
-    } catch {
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(true);
       setIsBuffering(false);
-      setPlaybackError('Unable to resume playback. Please try again.');
+      setPlaybackError('');
+    } catch (error) {
+      if (requestTokenRef.current !== token) return;
+      clearStallWatchdog();
+      setIsPlaying(false);
+      setIsBuffering(false);
+      if (error?.name === 'AbortError') return;
+      setPlaybackError(error?.name === 'NotAllowedError'
+        ? 'Playback was blocked by the browser. Press play to continue.'
+        : 'Unable to resume playback. Please try again.');
     }
-  }, [currentTrack]);
+  }, [clearStallWatchdog, startStallWatchdog]);
 
   const handleSeek = useCallback((newPercent) => {
     const audio = audioRef.current;
@@ -384,6 +576,8 @@ export function MoodMusicProvider({ children }) {
       prevTrack,
       playNext: nextTrack,
       playPrevious: prevTrack,
+      retry,
+      skip,
       handleSeek,
       currentTime: duration > 0 ? (progress / 100) * duration : 0,
       seekTo: (seconds) => handleSeek(duration > 0 ? (seconds / duration) * 100 : 0),

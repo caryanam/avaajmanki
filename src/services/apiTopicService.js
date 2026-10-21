@@ -25,6 +25,20 @@ export const apiTopicService = {
     }
   },
 
+  // GET /api/topics/me?page=0&size=20
+  async getMyTopics(params = {}) {
+    try {
+      const response = await apiClient.get('/api/topics/me', {
+        params: { page: params.page || 0, size: params.size || 20 },
+      });
+      const data = response.data?.data || response.data || [];
+      return Array.isArray(data) ? data : (data.content || []);
+    } catch (err) {
+      console.warn('[apiTopicService] getMyTopics error:', err?.message || err);
+      return [];
+    }
+  },
+
   async createTopic(topicData) {
     try {
       const payload = {
@@ -34,10 +48,41 @@ export const apiTopicService = {
         parentTopic: topicData.parentTopic || 'GENERAL',
       };
       const response = await apiClient.post('/api/topics', payload, { timeout: 10000 });
-      return response.data?.data || response.data;
+      const data = response.data?.data || response.data;
+      if (!data) throw new Error('No topic data returned by server');
+      return data;
     } catch (err) {
-      console.warn('[apiTopicService] createTopic DB persist notice:', err?.message || err);
+      console.error('[apiTopicService] createTopic error:', err?.message || err);
+      throw err;
+    }
+  },
+
+  async getTopicById(idOrSlug) {
+    if (!idOrSlug) return null;
+    try {
+      const topics = await this.getTopics();
+      const clean = String(idOrSlug).trim().toLowerCase();
+      const cleanNorm = clean.replace(/[^a-z0-9]/g, '');
+      return (
+        topics.find((t) => {
+          const tId = String(t.id).toLowerCase();
+          const tName = String(t.name || '').trim().toLowerCase();
+          const tNorm = tName.replace(/[^a-z0-9]/g, '');
+          const tLabel = String(t.label || '').trim().toLowerCase();
+          const tLabelNorm = tLabel.replace(/[^a-z0-9]/g, '');
+          return (
+            tId === clean ||
+            tName === clean ||
+            tNorm === cleanNorm ||
+            tLabel === clean ||
+            tLabelNorm === cleanNorm
+          );
+        }) || null
+      );
+    } catch (err) {
+      console.warn('[apiTopicService] getTopicById error:', err?.message || err);
       return null;
     }
   },
 };
+

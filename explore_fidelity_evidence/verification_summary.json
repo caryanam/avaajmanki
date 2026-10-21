@@ -1,0 +1,377 @@
+{
+  "1920x1080": {
+    "viewportWidth": 1920,
+    "scrollWidth": 1920,
+    "hasHorizontalOverflow": false,
+    "popularCardCount": 8,
+    "popularCards": [
+      {
+        "title": "Love",
+        "stat": "12.4K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Life & Work",
+        "stat": "9.8K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Mental Health",
+        "stat": "8.1K discussions",
+        "imgNaturalWidth": 1523,
+        "imgNaturalHeight": 512,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Family",
+        "stat": "7.9K discussions",
+        "imgNaturalWidth": 964,
+        "imgNaturalHeight": 338,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Personal Growth",
+        "stat": "6.6K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Education",
+        "stat": "6.8K discussions",
+        "imgNaturalWidth": 1572,
+        "imgNaturalHeight": 576,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Relationships",
+        "stat": "11.2K discussions",
+        "imgNaturalWidth": 1552,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Friendship",
+        "stat": "5.4K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      }
+    ],
+    "discussionCardCount": 42,
+    "hasRightSidebar": true,
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_1920x1080.png"
+  },
+  "1440x900": {
+    "viewportWidth": 1440,
+    "scrollWidth": 1440,
+    "hasHorizontalOverflow": false,
+    "popularCardCount": 8,
+    "popularCards": [
+      {
+        "title": "Love",
+        "stat": "12.4K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Life & Work",
+        "stat": "9.8K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Mental Health",
+        "stat": "8.1K discussions",
+        "imgNaturalWidth": 1523,
+        "imgNaturalHeight": 512,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Family",
+        "stat": "7.9K discussions",
+        "imgNaturalWidth": 964,
+        "imgNaturalHeight": 338,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Personal Growth",
+        "stat": "6.6K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Education",
+        "stat": "6.8K discussions",
+        "imgNaturalWidth": 1572,
+        "imgNaturalHeight": 576,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Relationships",
+        "stat": "11.2K discussions",
+        "imgNaturalWidth": 1552,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Friendship",
+        "stat": "5.4K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      }
+    ],
+    "discussionCardCount": 42,
+    "hasRightSidebar": true,
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_1440x900.png"
+  },
+  "1366x768": {
+    "viewportWidth": 1366,
+    "scrollWidth": 1366,
+    "hasHorizontalOverflow": false,
+    "popularCardCount": 8,
+    "popularCards": [
+      {
+        "title": "Love",
+        "stat": "12.4K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Life & Work",
+        "stat": "9.8K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Mental Health",
+        "stat": "8.1K discussions",
+        "imgNaturalWidth": 1523,
+        "imgNaturalHeight": 512,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Family",
+        "stat": "7.9K discussions",
+        "imgNaturalWidth": 964,
+        "imgNaturalHeight": 338,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Personal Growth",
+        "stat": "6.6K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Education",
+        "stat": "6.8K discussions",
+        "imgNaturalWidth": 1572,
+        "imgNaturalHeight": 576,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Relationships",
+        "stat": "11.2K discussions",
+        "imgNaturalWidth": 1552,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Friendship",
+        "stat": "5.4K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      }
+    ],
+    "discussionCardCount": 42,
+    "hasRightSidebar": true,
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_1366x768.png"
+  },
+  "1024x768": {
+    "viewportWidth": 1024,
+    "scrollWidth": 1024,
+    "hasHorizontalOverflow": false,
+    "popularCardCount": 8,
+    "popularCards": [
+      {
+        "title": "Love",
+        "stat": "12.4K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Life & Work",
+        "stat": "9.8K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Mental Health",
+        "stat": "8.1K discussions",
+        "imgNaturalWidth": 1523,
+        "imgNaturalHeight": 512,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Family",
+        "stat": "7.9K discussions",
+        "imgNaturalWidth": 964,
+        "imgNaturalHeight": 338,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Personal Growth",
+        "stat": "6.6K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Education",
+        "stat": "6.8K discussions",
+        "imgNaturalWidth": 1572,
+        "imgNaturalHeight": 576,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Relationships",
+        "stat": "11.2K discussions",
+        "imgNaturalWidth": 1552,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      },
+      {
+        "title": "Friendship",
+        "stat": "5.4K discussions",
+        "imgNaturalWidth": 0,
+        "imgNaturalHeight": 0,
+        "renderedWidth": 134,
+        "renderedHeight": 113
+      }
+    ],
+    "discussionCardCount": 42,
+    "hasRightSidebar": true,
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_1024x768.png"
+  },
+  "390px_mobile": {
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "hasHorizontalOverflow": false,
+    "popularCardCount": 8,
+    "popularCards": [
+      {
+        "title": "Love",
+        "stat": "12.4K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Life & Work",
+        "stat": "9.8K discussions",
+        "imgNaturalWidth": 864,
+        "imgNaturalHeight": 394,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Mental Health",
+        "stat": "8.1K discussions",
+        "imgNaturalWidth": 1523,
+        "imgNaturalHeight": 512,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Family",
+        "stat": "7.9K discussions",
+        "imgNaturalWidth": 964,
+        "imgNaturalHeight": 338,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Personal Growth",
+        "stat": "6.6K discussions",
+        "imgNaturalWidth": 1553,
+        "imgNaturalHeight": 569,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Education",
+        "stat": "6.8K discussions",
+        "imgNaturalWidth": 1572,
+        "imgNaturalHeight": 576,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Relationships",
+        "stat": "11.2K discussions",
+        "imgNaturalWidth": 0,
+        "imgNaturalHeight": 0,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      },
+      {
+        "title": "Friendship",
+        "stat": "5.4K discussions",
+        "imgNaturalWidth": 0,
+        "imgNaturalHeight": 0,
+        "renderedWidth": 160,
+        "renderedHeight": 129
+      }
+    ],
+    "discussionCardCount": 42,
+    "hasRightSidebar": false,
+    "screenshot": "C:\\Users\\Niraj Ghube\\OneDrive\\Desktop\\fron35\\avaajmanki\\explore_fidelity_evidence\\explore_390px_mobile.png"
+  }
+}

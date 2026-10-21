@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Awaaj Man Ki — Concept A: Modern Editorial Community (Desktop Prototype)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..800;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-canvas: #FBF9F5;
+      --bg-surface: #FFFFFF;
+      --bg-subtle: #F3EFEA;
+      --bg-hover: #ECE6DE;
+      --text-primary: #1A1817;
+      --text-secondary: #5C5752;
+      --text-muted: #8C867F;
+      --text-inverse: #FFFFFF;
+      --border-subtle: #EBE6DE;
+      --border-medium: #D8D2C7;
+      --brand-terracotta: #C85A32;
+      --brand-terracotta-hover: #B24B25;
+      --brand-amber: #E28743;
+      --status-success: #2D6A5F;
+      --pulse-cat-tech: #1F5E6B;
+      --font-serif: 'Newsreader', Georgia, serif;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-pill: 9999px;
+      --shadow-sm: 0 1px 3px rgba(26, 24, 23, 0.04);
+      --shadow-md: 0 6px 20px rgba(26, 24, 23, 0.08);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 3-Column Layout Canvas (1280px Max) */
+    .app-canvas {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 240px 680px 320px;
+      gap: 24px;
+      padding: 24px 20px;
+      min-height: 100vh;
+    }
+
+    /* Column 1: Left Navigation Rail (240px) */
+    .left-nav {
+      position: sticky;
+      top: 24px;
+      height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .brand-logo {
+      font-family: var(--font-serif);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .brand-logo span.tag {
+      font-family: var(--font-sans);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--bg-subtle);
+      color: var(--brand-terracotta);
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+    }
+    .nav-links { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.15s ease;
+    }
+    .nav-link:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .nav-link.active {
+      background: var(--bg-subtle);
+      color: var(--brand-terracotta);
+      border-left: 3px solid var(--brand-terracotta);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .write-thought-btn {
+      margin-top: 24px;
+      background: var(--brand-terracotta);
+      color: var(--text-inverse);
+      border: none;
+      padding: 12px 18px;
+      border-radius: var(--radius-pill);
+      font-weight: 700;
+      font-size: 14.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(200, 90, 50, 0.25);
+      transition: background 0.15s;
+    }
+    .write-thought-btn:hover { background: var(--brand-terracotta-hover); }
+
+    .user-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+    .avatar-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #E8D5C8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--brand-terracotta);
+      font-size: 14px;
+    }
+
+    /* Column 2: Focused Feed (680px) */
+    .feed-column { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+
+    /* Feed Segmented Header */
+    .feed-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 12px;
+    }
+    .feed-tabs { display: flex; gap: 20px; }
+    .feed-tab {
+      background: none;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding-bottom: 8px;
+      position: relative;
+    }
+    .feed-tab.active {
+      color: var(--text-primary);
+    }
+    .feed-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -13px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--brand-terracotta);
+    }
+
+    /* Cards */
+    .content-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 22px;
+      transition: border-color 0.15s ease;
+    }
+    .content-card:hover { border-color: var(--border-medium); }
+
+    /* Pulse Editorial Card */
+    .pulse-editorial-card {
+      border-top: 3px solid var(--pulse-cat-tech);
+    }
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+    }
+    .publisher-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .publisher-badge span.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-success); }
+    .article-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+    .briefing-points {
+      background: var(--bg-subtle);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      margin: 14px 0;
+      list-style-type: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .briefing-points li {
+      font-size: 14.5px;
+      color: var(--text-secondary);
+      position: relative;
+      padding-left: 18px;
+    }
+    .briefing-points li::before {
+      content: '•';
+      position: absolute;
+      left: 4px;
+      color: var(--brand-terracotta);
+      font-weight: 800;
+    }
+
+    /* Community Take Quotation Bubble */
+    .take-stream { margin-top: 16px; border-top: 1px solid var(--border-subtle); padding-top: 14px; }
+    .take-bubble {
+      border-left: 3px solid var(--brand-terracotta);
+      padding: 8px 14px;
+      background: #FAF7F2;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin-bottom: 10px;
+    }
+    .take-author { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
+    .take-text { font-size: 14px; color: var(--text-primary); font-style: italic; }
+
+    /* Post Card (Vernacular Poetry) */
+    .poem-text {
+      font-family: var(--font-serif);
+      font-size: 17px;
+      line-height: 1.7;
+      color: var(--text-primary);
+      margin: 14px 0;
+      white-space: pre-line;
+    }
+
+    /* Audio Voice Note Bar */
+    .voice-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-subtle);
+      padding: 10px 14px;
+      border-radius: var(--radius-pill);
+      width: fit-content;
+      margin-bottom: 14px;
+    }
+    .play-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--brand-terracotta);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .waveform-visual {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 2px;
+      color: var(--brand-amber);
+    }
+
+    /* Card Actions */
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .action-item { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .action-item:hover { color: var(--brand-terracotta); }
+
+    /* Column 3: Contextual Right Rail (320px) */
+    .right-rail {
+      position: sticky;
+      top: 24px;
+      height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .rail-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 18px;
+    }
+    .rail-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .briefing-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .briefing-item:last-child { border-bottom: none; }
+    .briefing-title { font-size: 14px; font-weight: 600; color: var(--text-primary); text-decoration: none; }
+    .briefing-title:hover { color: var(--brand-terracotta); }
+    .briefing-source { font-size: 11.5px; color: var(--text-muted); }
+
+    /* Analog Tape Deck Audio Player */
+    .tape-player {
+      background: #23201E;
+      color: #EAE6DF;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .tape-track-name { font-size: 13.5px; font-weight: 600; color: #FFF; }
+    .tape-mood-pill {
+      font-size: 11px;
+      background: rgba(200, 90, 50, 0.25);
+      color: #FFB396;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      width: fit-content;
+    }
+    .tape-scrub { height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; position: relative; }
+    .tape-progress { width: 42%; height: 100%; background: var(--brand-terracotta); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+  <div class="app-canvas">
+    <!-- ── COLUMN 1: LEFT NAVIGATION RAIL (240px) ── -->
+    <aside class="left-nav">
+      <div>
+        <a href="#" class="brand-logo">
+          Awaaj Man Ki <span class="tag">Editorial</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="#" class="nav-link active"><span>🏛️</span> Courtyard (Home)</a></li>
+          <li><a href="#" class="nav-link"><span>📰</span> Awaaj Pulse News</a></li>
+          <li><a href="#" class="nav-link"><span>🧭</span> Explore Channels</a></li>
+          <li><a href="#" class="nav-link"><span>🎵</span> Ambient Station</a></li>
+          <li><a href="#" class="nav-link"><span>🔖</span> Saved Thoughts</a></li>
+          <li><a href="#" class="nav-link"><span>🔔</span> Notifications</a></li>
+          <li><a href="#" class="nav-link"><span>⚙️</span> Settings</a></li>
+        </ul>
+        <button class="write-thought-btn">+ Write Thought</button>
+      </div>
+
+      <div class="user-pill">
+        <div class="avatar-circle">M</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">@maratha_falcon</div>
+          <div style="font-size: 11.5px; color: var(--text-muted);">Anonymous Voice</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── COLUMN 2: FOCUSED READING FEED (680px) ── -->
+    <main class="feed-column">
+      <header class="feed-header">
+        <div class="feed-tabs">
+          <button class="feed-tab active">Courtyard (For You)</button>
+          <button class="feed-tab">Latest Thoughts</button>
+          <button class="feed-tab">Shayari & Poetry</button>
+        </div>
+        <div style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Pune, Maharashtra</div>
+      </header>
+
+      <!-- Pulse Editorial Briefing Card -->
+      <article class="content-card pulse-editorial-card">
+        <div class="card-meta">
+          <div class="publisher-badge">
+            <span class="dot"></span>
+            The Hindu (Technology) &bull; Verified National Coverage
+          </div>
+          <div style="font-size: 11.5px; color: var(--pulse-cat-tech); font-weight: 700; background: rgba(31,94,107,0.1); padding: 2px 8px; border-radius: var(--radius-sm);">TECHNOLOGY</div>
+        </div>
+        <h2 class="article-title">Elon Musk and Mukesh Ambani’s Feud Over Starlink | India Spectrum Explained</h2>
+        <p style="font-size: 15px; color: var(--text-secondary); line-height: 1.6;">
+          Elon Musk argues that India’s satellite telecom framework should avoid traditional spectrum auctions, while Indian telecom majors insist on a level playing field for domestic operators.
+        </p>
+
+        <ul class="briefing-points">
+          <li><strong>The Core Disagreement:</strong> Global satellite operators favor administrative spectrum allocation; domestic telecoms demand public bidding auctions.</li>
+          <li><strong>Sovereignty Context:</strong> Security agencies require Indian ground gateway stations before commercial satellite uplinks can be switched on.</li>
+          <li><strong>Community Question:</strong> Should satellite internet be fast-tracked to remote rural schools regardless of domestic corporate disputes?</li>
+        </ul>
+
+        <!-- Community Take Bubble -->
+        <div class="take-stream">
+          <div class="take-bubble">
+            <div class="take-author">@satara_scholar &bull; Verified Take</div>
+            <div class="take-text">"ग्रामीण भागातील शाळांसाठी इंटरनेट हवे आहे, मग ते कोणाकडूनही येवो. स्पर्धा ग्राहकांसाठी नेहमीच फायदेशीर असते."</div>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <div class="action-item">💬 48 Takes &amp; Perspectives</div>
+          <div class="action-item">❤️ 132 Agreed</div>
+          <div class="action-item" style="color: var(--brand-terracotta); font-weight: 700;">+ Write Your Take (280 chars)</div>
+          <div class="action-item" style="margin-left: auto;">↗ Original Coverage</div>
+        </div>
+      </article>
+
+      <!-- Vernacular Post Card (Voice Note & Poetry) -->
+      <article class="content-card">
+        <div class="card-meta">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="avatar-circle" style="width: 28px; height: 28px; font-size: 12px; background: #E1E8DF; color: var(--status-success);">P</div>
+            <strong style="color: var(--text-primary);">@pune_poet</strong>
+            <span>&bull; #SHAYARI</span>
+          </div>
+          <div>3 hours ago</div>
+        </div>
+
+        <div class="voice-bar">
+          <button class="play-btn">▶</button>
+          <span style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Voice Note (0:45)</span>
+          <span class="waveform-visual">|||!||!||||!||!|||</span>
+        </div>
+
+        <p class="poem-text">
+          कधीतरी शांततेत बसून ऐकावं स्वतःचं मन,
+          गर्दीत हरवून गेलेल्या आवाजाला पुन्हा शोधायचं असतं...
+          जगात सगळे सल्ले देणारे भेटतील,
+          पण समजून घेणारा एकही नाही.
+        </p>
+
+        <div class="card-actions">
+          <div class="action-item">❤️ 214 Likes</div>
+          <div class="action-item">💬 36 Replies</div>
+          <div class="action-item">🔥 Deep Resonance</div>
+          <div class="action-item" style="margin-left: auto;">🔖 Bookmark</div>
+        </div>
+      </article>
+    </main>
+
+    <!-- ── COLUMN 3: CONTEXTUAL RIGHT RAIL (320px) ── -->
+    <aside class="right-rail">
+      <!-- Live Pulse Briefing -->
+      <div class="rail-card">
+        <div class="rail-title">
+          <span>Happening Now</span>
+          <span style="color: var(--brand-terracotta); font-size: 11px;">● LIVE</span>
+        </div>
+
+        <div class="briefing-item">
+          <a href="#" class="briefing-title">Jantar Mantar protest site relocated; Delhi Police designates alternative venues</a>
+          <span class="briefing-source">The Hindu &bull; 4h ago</span>
+        </div>
+        <div class="briefing-item">
+          <a href="#" class="briefing-title">IND vs WI 3rd T20: Abhishek, Arshdeep to the fore as India leads 2-1</a>
+          <span class="briefing-source">Cricket Desk &bull; 6h ago</span>
+        </div>
+        <div class="briefing-item">
+          <a href="#" class="briefing-title">Bigg Boss 20 Day 37: Housemates debate over luxury budget rules</a>
+          <span class="briefing-source">Filmibeat &bull; 8h ago</span>
+        </div>
+      </div>
+
+      <!-- Trending Topic Courtyards -->
+      <div class="rail-card">
+        <div class="rail-title">Active Courtyards</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600;">
+            <a href="#" style="color: var(--text-primary); text-decoration: none;">#SHAYARI</a>
+            <span style="color: var(--text-muted);">1.4k thoughts</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600;">
+            <a href="#" style="color: var(--text-primary); text-decoration: none;">#MERANETA</a>
+            <span style="color: var(--text-muted);">890 debates</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600;">
+            <a href="#" style="color: var(--text-primary); text-decoration: none;">#LIFE_WORK</a>
+            <span style="color: var(--text-muted);">620 talks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analog Tape Deck Audio Player -->
+      <div class="tape-player">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="tape-mood-pill">Mood: Late Night Acoustic</span>
+          <span style="font-size: 11px; color: #9A958E;">02:18 / 04:30</span>
+        </div>
+        <div class="tape-track-name">Sufi Reflections in Pune</div>
+        <div class="tape-scrub">
+          <div class="tape-progress"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span>⏮ Previous</span>
+          <button style="background: var(--brand-terracotta); border: none; width: 28px; height: 28px; border-radius: 50%; color: white; cursor: pointer;">⏸</button>
+          <span>Next ⏭</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+</body>
+</html>

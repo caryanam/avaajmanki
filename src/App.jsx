@@ -12,6 +12,7 @@ import { MoodMusicProvider } from './context/MoodMusicContext.jsx';
 import { AppRoutes } from './routes/AppRoutes.jsx';
 import { ToastContainer } from './components/common/Toast.jsx';
 import { GlobalTranslationOverlay } from './components/common/GlobalTranslationOverlay.jsx';
+import { GlobalMusicPlayer } from './components/common/GlobalMusicPlayer.jsx';
 import './styles/global.css';
 
 const queryClient = new QueryClient({
@@ -40,6 +41,7 @@ export default function App() {
                         </React.Suspense>
                         <ToastContainer />
                         <GlobalTranslationOverlay />
+                        <GlobalMusicPlayer />
                       </ChatProvider>
                     </ReportProvider>
                   </NotificationProvider>

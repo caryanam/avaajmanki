@@ -150,7 +150,7 @@ export function SleekCommentSidePanel({ post, onClose, onNavigate }) {
       </div>
 
       <div style={{ flexShrink: 0 }}>
-        <CommentComposer postId={post.id} />
+        <CommentComposer postId={post.id} postAuthorUsername={post.username} enableImage={true} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
