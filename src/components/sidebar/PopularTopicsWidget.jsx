@@ -1,9 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Heart, Briefcase, Sprout, Landmark, Sparkles, Trophy } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { apiTopicService } from '../../services/apiTopicService.js';
 
 export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
   const { t } = useLanguage();
+  const [counts, setCounts] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    apiTopicService.getTopicStats()
+      .then((data) => {
+        if (mounted && data?.counts) {
+          setCounts(data.counts);
+        }
+      })
+      .catch((err) => {
+        console.warn('[PopularTopicsWidget] failed to fetch topic stats:', err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const formatCount = (raw) => {
+    const num = Number(raw) || 0;
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return String(num);
+  };
 
   const topics = [
     { 
@@ -13,7 +39,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Heart, 
       iconBg: '#FDF2F8', 
       iconColor: '#EC4899', 
-      countNum: '12.4K' 
     },
     { 
       id: 'LIFE_WORK', 
@@ -22,7 +47,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Briefcase, 
       iconBg: '#EFF6FF', 
       iconColor: '#3B82F6', 
-      countNum: '9.8K' 
     },
     { 
       id: 'MOTIVATION', 
@@ -31,7 +55,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Sprout, 
       iconBg: '#ECFDF5', 
       iconColor: '#10B981', 
-      countNum: '8.1K' 
     },
     { 
       id: 'SOCIETY_POLITICS', 
@@ -40,7 +63,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Landmark, 
       iconBg: '#FFF7ED', 
       iconColor: '#F97316', 
-      countNum: '7.6K' 
     },
     { 
       id: 'ENTERTAINMENT', 
@@ -49,7 +71,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Sparkles, 
       iconBg: '#FAF5FF', 
       iconColor: '#A855F7', 
-      countNum: '6.4K' 
     },
     { 
       id: 'SPORTS', 
@@ -58,7 +79,6 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
       icon: Trophy, 
       iconBg: '#FEFCE8', 
       iconColor: '#EAB308', 
-      countNum: '5.9K' 
     },
   ];
 
@@ -89,7 +109,11 @@ export function PopularTopicsWidget({ onSelectTopic, onNavigate }) {
         {topics.map((item) => {
           const IconComponent = item.icon;
           const displayName = t(item.nameKey, item.name);
-          const countText = t('topic.discussionsCountShort', '{{count}} discussions', { count: item.countNum });
+          const rawNum = counts[item.id] ?? counts[item.name.toUpperCase()] ?? 0;
+          const countNum = formatCount(rawNum);
+          const countText = rawNum === 1
+            ? `${countNum} ${t('explore.discussionSingular', 'discussion')}`
+            : `${countNum} ${t('explore.discussionPlural', 'discussions')}`;
 
           return (
             <div

@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Image as ImageIcon, Send, X, VenetianMask, User, PenSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { apiClient } from '../../services/apiClient.js';
+import { apiTopicService } from '../../services/apiTopicService.js';
 import { getMediaUrl } from '../../config/env.js';
 
 export function ExploreComposer({ onNavigate, defaultTopic = 'GENERAL' }) {
@@ -19,19 +20,47 @@ export function ExploreComposer({ onNavigate, defaultTopic = 'GENERAL' }) {
   const [imageUrl, setImageUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customTopics, setCustomTopics] = useState([]);
 
-  const TOPIC_OPTIONS = [
-    { id: 'GENERAL', label: 'General' },
-    { id: 'LOVE', label: 'Love' },
-    { id: 'RELATIONSHIPS', label: 'Relationships' },
-    { id: 'LIFE_WORK', label: 'Life & Work' },
-    { id: 'MENTAL_HEALTH', label: 'Mental Health' },
-    { id: 'FAMILY', label: 'Family' },
-    { id: 'PERSONAL_GROWTH', label: 'Personal Growth' },
-    { id: 'EDUCATION', label: 'Education' },
-    { id: 'FEELINGS', label: 'Feelings' },
-    { id: 'SHAYARI', label: 'Shayari & Poetry' },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    apiTopicService.getTopics()
+      .then((items) => {
+        if (mounted && Array.isArray(items)) {
+          setCustomTopics(items);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const TOPIC_OPTIONS = useMemo(() => {
+    const base = [
+      { id: 'GENERAL', label: 'General' },
+      { id: 'LOVE', label: 'Love' },
+      { id: 'RELATIONSHIPS', label: 'Relationships' },
+      { id: 'LIFE_WORK', label: 'Life & Work' },
+      { id: 'MENTAL_HEALTH', label: 'Mental Health' },
+      { id: 'FAMILY', label: 'Family' },
+      { id: 'PERSONAL_GROWTH', label: 'Personal Growth' },
+      { id: 'EDUCATION', label: 'Education' },
+      { id: 'FEELINGS', label: 'Feelings' },
+      { id: 'SHAYARI', label: 'Shayari & Poetry' },
+    ];
+    const baseIds = new Set(base.map((b) => b.id.toUpperCase()));
+    const customOpts = customTopics
+      .filter((ct) => {
+        const sName = String(ct.name || '').toUpperCase().trim();
+        return sName && !baseIds.has(sName);
+      })
+      .map((ct) => ({
+        id: String(ct.name).toUpperCase().trim(),
+        label: ct.label || ct.name,
+      }));
+    return [...base, ...customOpts];
+  }, [customTopics]);
 
   const handleOpenComposer = () => {
     if (!currentUser) {

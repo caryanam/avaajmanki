@@ -92,7 +92,7 @@ export function PopularTopicsCarousel({ topics = [], onSelectTopic, onViewAll })
       <div className={`popular-topics-track ${topics.length <= 4 ? 'few-cards' : ''}`} ref={trackRef}>
         {topics.map((topic) => (
           <PopularTopicCard
-            key={topic.id || topic.name}
+            key={topic.uniqueKey || (topic.isCustom ? `custom-${topic.id}` : `canonical-${topic.id}`)}
             topic={topic}
             onClick={onSelectTopic}
           />

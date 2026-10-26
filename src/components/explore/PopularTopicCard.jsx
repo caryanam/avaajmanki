@@ -1,8 +1,9 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { getMediaUrl } from '../../config/env.js';
 
 export function PopularTopicCard({ topic, onClick }) {
-  const { name, icon, image, count = 0, badgeBg = '#FFE4E6' } = topic;
+  const { name, icon, image, fallbackImage, count = 0, badgeBg = '#FFE4E6' } = topic;
 
   const formattedCount =
     typeof count === 'number'
@@ -28,10 +29,15 @@ export function PopularTopicCard({ topic, onClick }) {
       {/* 16:9 Thumbnail Image */}
       <div className="explore-topic-thumb-wrap">
         <img
-          src={image}
+          src={getMediaUrl(image)}
           alt={name}
           className="explore-topic-thumb-img"
-          loading="lazy"
+          onError={(e) => {
+            if (fallbackImage && e.currentTarget.src !== fallbackImage) {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = fallbackImage;
+            }
+          }}
         />
       </div>
 

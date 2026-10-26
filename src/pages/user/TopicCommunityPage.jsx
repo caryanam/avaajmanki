@@ -792,6 +792,7 @@ export function TopicCommunityPage({ topicId = 'LOVE', onNavigate }) {
         badgeBg: '#FFE4E6',
         badgeColor: '#BE123C',
         image: realCover,
+        fallbackImage: CATEGORY_COVER_FALLBACKS[customTopicData.parentTopic] || topicLove,
         hasRealCover: Boolean(realCover),
         description: `Discussions, thoughts, and community insights about ${formattedName}. Started by ${customTopicData.createdByUsername || 'community member'}.`,
         discussionCount: String(realDiscussionsCount),
@@ -1010,27 +1011,10 @@ export function TopicCommunityPage({ topicId = 'LOVE', onNavigate }) {
 
     setIsSubmittingPost(true);
     try {
-      if (customTopicData?.id) {
-        try {
-          const res = await apiCommentService.createTopicComment(
-            customTopicData.id,
-            newPostContent.trim(),
-            'EN',
-            newPostImage || null
-          );
-          const newComment = res?.data || res;
-          if (newComment) {
-            setTopicOpinions((prev) => [newComment, ...prev]);
-          }
-        } catch (opErr) {
-          console.warn('Opinion comment creation notice:', opErr);
-        }
-      }
-
       await createPost({
         title: newPostTitle.trim() || undefined,
         content: newPostContent.trim(),
-        topic: topicMeta.id,
+        topic: customTopicData?.name || topicMeta.id,
         imageUrl: newPostImage || undefined,
         postType: newPostImage ? 'IMAGE' : 'TEXT',
       });
@@ -1134,6 +1118,13 @@ export function TopicCommunityPage({ topicId = 'LOVE', onNavigate }) {
                 <img
                   src={getMediaUrl(topicMeta.image)}
                   alt={`${topicMeta.name} Cover`}
+                  onError={(e) => {
+                    const fb = topicMeta.fallbackImage || CATEGORY_COVER_FALLBACKS[customTopicData?.parentTopic] || topicLove;
+                    if (fb && e.currentTarget.src !== fb) {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = fb;
+                    }
+                  }}
                   className="community-hero-cover-img"
                 />
                 <div className="community-hero-cover-overlay" />
@@ -1732,7 +1723,17 @@ export function TopicCommunityPage({ topicId = 'LOVE', onNavigate }) {
                   role="button"
                   tabIndex={0}
                 >
-                  <img src={rel.image} alt={rel.name} className="related-topic-thumb" />
+                  <img
+                    src={getMediaUrl(rel.image)}
+                    alt={rel.name}
+                    className="related-topic-thumb"
+                    onError={(e) => {
+                      if (rel.fallbackImage && e.currentTarget.src !== rel.fallbackImage) {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = rel.fallbackImage;
+                      }
+                    }}
+                  />
                   <div className="related-topic-info">
                     <span className="related-topic-name">{rel.name}</span>
                     <span className="related-topic-discussions">

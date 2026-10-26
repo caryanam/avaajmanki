@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Users, Check } from 'lucide-react';
 import { useToast } from '../../context/ToastContext.jsx';
+import { getMediaUrl } from '../../config/env.js';
 
 export function TopicOverviewWidget({
   topicId = 'MENTAL_HEALTH',
@@ -64,10 +65,14 @@ export function TopicOverviewWidget({
       {/* Top Cover Image with Floating Icon Badge */}
       <div className="topic-overview-cover-wrap">
         <img
-          src={coverImage}
+          src={getMediaUrl(coverImage)}
           alt={topicName}
           className="topic-overview-cover-img"
           loading="lazy"
+          onError={(e) => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.style.display = 'none';
+          }}
         />
         <div
           className="topic-overview-floating-badge"

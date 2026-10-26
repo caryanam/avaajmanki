@@ -298,6 +298,8 @@
     "viewAll": "View all",
     "discussionsCount": "{{count}} discussions",
     "discussionsCountShort": "{{count}} discussions",
+    "discussionSingular": "discussion",
+    "discussionPlural": "discussions",
     "editorialWire": "Editorial Wire",
     "yourVoiceMatters": "Your voice matters",
     "promoDesc": "Share freely. Stay anonymous.\nBe part of a kinder world.",

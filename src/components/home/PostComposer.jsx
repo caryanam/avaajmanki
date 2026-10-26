@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Image as ImageIcon, Mic, Compass, Smile, ArrowRight, VenetianMask, X, ChevronDown 
 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { usePosts } from '../../context/PostContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { apiClient } from '../../services/apiClient.js';
+import { apiTopicService } from '../../services/apiTopicService.js';
 import { getMediaUrl } from '../../config/env.js';
 import avatarSilhouette from '../../assets/home/avatar-silhouette.jpg';
 
@@ -24,11 +25,33 @@ export function PostComposer({ onNavigate, defaultTopic = 'GENERAL' }) {
   const [selectedMood, setSelectedMood] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [customTopics, setCustomTopics] = useState([]);
 
-  const TOPIC_OPTIONS = [
-    'GENERAL', 'LIFE_WORK', 'FEELINGS', 'SOCIETY_POLITICS', 
-    'ENTERTAINMENT', 'SPORTS', 'SHAYARI', 'LOVE', 'MOTIVATION', 'MENTAL_HEALTH'
-  ];
+  useEffect(() => {
+    let mounted = true;
+    apiTopicService.getTopics()
+      .then((items) => {
+        if (mounted && Array.isArray(items)) {
+          setCustomTopics(items);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const TOPIC_OPTIONS = useMemo(() => {
+    const base = [
+      'GENERAL', 'LIFE_WORK', 'FEELINGS', 'SOCIETY_POLITICS', 
+      'ENTERTAINMENT', 'SPORTS', 'SHAYARI', 'LOVE', 'MOTIVATION', 'MENTAL_HEALTH'
+    ];
+    const baseSet = new Set(base);
+    const customNames = customTopics
+      .map((ct) => String(ct.name || '').toUpperCase().trim())
+      .filter((name) => name && !baseSet.has(name));
+    return [...base, ...customNames];
+  }, [customTopics]);
 
   const MOOD_OPTIONS = ['😊 Happy', '🌿 Peaceful', '🔥 Energized', '💔 Reflective', '☕ Chill'];
 

@@ -20,6 +20,7 @@ import { TopicCreateModal } from '../../components/topics/TopicCreateModal.jsx';
 import { apiTopicService } from '../../services/apiTopicService.js';
 import { usePosts } from '../../context/PostContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { getMediaUrl } from '../../config/env.js';
 
 // High-resolution photography cover assets
 import topicLove from '../../assets/explore/topic-love.jpg';
@@ -52,6 +53,7 @@ export function TopicDirectoryPage({ onNavigate }) {
   const { t } = useLanguage();
 
   const [serverTopics, setServerTopics] = useState([]);
+  const [topicStats, setTopicStats] = useState({ counts: {}, scores: {}, userParticipatedTopics: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,17 +61,34 @@ export function TopicDirectoryPage({ onNavigate }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  const [sortParam, setSortParam] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('sort') || '';
+  });
+
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
+  useEffect(() => {
+    const handleSyncUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setSortParam(params.get('sort') || '');
+    };
+    window.addEventListener('popstate', handleSyncUrl);
+    return () => window.removeEventListener('popstate', handleSyncUrl);
   }, []);
 
   const fetchTopics = useCallback(() => {
     setLoading(true);
     setError(null);
-    apiTopicService
-      .getTopics()
-      .then((items) => {
+    Promise.all([
+      apiTopicService.getTopics(),
+      apiTopicService.getTopicStats().catch(() => ({ counts: {}, scores: {}, userParticipatedTopics: [] })),
+    ])
+      .then(([items, stats]) => {
         setServerTopics(Array.isArray(items) ? items : []);
+        if (stats) setTopicStats(stats);
       })
       .catch((err) => {
         console.error('[TopicDirectoryPage] fetch topics error:', err);
@@ -98,6 +117,32 @@ export function TopicDirectoryPage({ onNavigate }) {
     return counts;
   }, [posts]);
 
+  // Discussion counts and recent activity scores from backend database
+  const getTopicCount = useCallback((topicId, topicName, parentTopic) => {
+    const counts = topicStats?.counts || {};
+    const uId = String(topicId || '').toUpperCase();
+    const uName = String(topicName || '').toUpperCase().replace(/[\s&]+/g, '_');
+    const uParent = String(parentTopic || '').toUpperCase();
+
+    if (counts[uId] !== undefined) return counts[uId];
+    if (counts[uName] !== undefined) return counts[uName];
+    if (uParent && counts[uParent] !== undefined) return counts[uParent];
+    if (topicCounts[uId] !== undefined) return topicCounts[uId];
+    return 0;
+  }, [topicStats, topicCounts]);
+
+  const getTopicScore = useCallback((topicId, topicName, parentTopic) => {
+    const scores = topicStats?.scores || {};
+    const uId = String(topicId || '').toUpperCase();
+    const uName = String(topicName || '').toUpperCase().replace(/[\s&]+/g, '_');
+    const uParent = String(parentTopic || '').toUpperCase();
+
+    if (scores[uId] !== undefined) return scores[uId];
+    if (scores[uName] !== undefined) return scores[uName];
+    if (uParent && scores[uParent] !== undefined) return scores[uParent];
+    return 0;
+  }, [topicStats]);
+
   // Combine canonical base topics with verified server topics
   const allTopics = useMemo(() => {
     const canonical = [
@@ -110,7 +155,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#BE123C',
         icon: '❤️',
         image: topicLove,
-        count: topicCounts['LOVE'] || topicCounts['FEELINGS'] || 12400,
+        count: getTopicCount('LOVE', 'Love', 'FEELINGS'),
+        score: getTopicScore('LOVE', 'Love', 'FEELINGS'),
         createdByUsername: 'Community',
       },
       {
@@ -122,7 +168,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#0284C7',
         icon: '💼',
         image: topicLifeWork,
-        count: topicCounts['LIFE_WORK'] || topicCounts['WORK'] || 9800,
+        count: getTopicCount('LIFE_WORK', 'Life & Work', 'LIFE_WORK'),
+        score: getTopicScore('LIFE_WORK', 'Life & Work', 'LIFE_WORK'),
         createdByUsername: 'Community',
       },
       {
@@ -134,7 +181,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#16A34A',
         icon: '🌱',
         image: topicMentalHealth,
-        count: topicCounts['MENTAL_HEALTH'] || 8100,
+        count: getTopicCount('MENTAL_HEALTH', 'Mental Health', 'FEELINGS'),
+        score: getTopicScore('MENTAL_HEALTH', 'Mental Health', 'FEELINGS'),
         createdByUsername: 'Community',
       },
       {
@@ -146,7 +194,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#EA580C',
         icon: '🏠',
         image: topicFamily,
-        count: topicCounts['FAMILY'] || 7900,
+        count: getTopicCount('FAMILY', 'Family', 'PARENTING'),
+        score: getTopicScore('FAMILY', 'Family', 'PARENTING'),
         createdByUsername: 'Community',
       },
       {
@@ -158,7 +207,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#BE123C',
         icon: '📈',
         image: topicMotivation,
-        count: topicCounts['PERSONAL_GROWTH'] || topicCounts['MOTIVATION'] || 6600,
+        count: getTopicCount('PERSONAL_GROWTH', 'Personal Growth', 'EXPRESSION'),
+        score: getTopicScore('PERSONAL_GROWTH', 'Personal Growth', 'EXPRESSION'),
         createdByUsername: 'Community',
       },
       {
@@ -170,7 +220,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#0284C7',
         icon: '🎓',
         image: topicEducation,
-        count: topicCounts['EDUCATION'] || 6800,
+        count: getTopicCount('EDUCATION', 'Education', 'EDUCATION'),
+        score: getTopicScore('EDUCATION', 'Education', 'EDUCATION'),
         createdByUsername: 'Community',
       },
       {
@@ -182,7 +233,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#9333EA',
         icon: '💞',
         image: topicRelationships,
-        count: topicCounts['RELATIONSHIPS'] || 11200,
+        count: getTopicCount('RELATIONSHIPS', 'Relationships', 'RELATIONSHIPS'),
+        score: getTopicScore('RELATIONSHIPS', 'Relationships', 'RELATIONSHIPS'),
         createdByUsername: 'Community',
       },
       {
@@ -194,7 +246,8 @@ export function TopicDirectoryPage({ onNavigate }) {
         badgeColor: '#0D9488',
         icon: '🤝',
         image: topicFriendship,
-        count: topicCounts['FRIENDSHIP'] || 5400,
+        count: getTopicCount('FRIENDSHIP', 'Friendship', 'FEELINGS'),
+        score: getTopicScore('FRIENDSHIP', 'Friendship', 'FEELINGS'),
         createdByUsername: 'Community',
       },
     ];
@@ -263,8 +316,21 @@ export function TopicDirectoryPage({ onNavigate }) {
       })
       .map((st) => {
         const cat = mapParentToCategory(st.parentTopic);
+        const sName = String(st.name || '').toUpperCase().trim();
+        const realCount = getTopicCount(sName, st.label || st.name, st.parentTopic) || 0;
+        const realScore = getTopicScore(sName, st.label || st.name, st.parentTopic);
+        const fallbackCover = getTopicCover(st.parentTopic);
+        const storedCover = typeof window !== 'undefined'
+          ? (JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.id)] ||
+             JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.name).toLowerCase()] ||
+             JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.label || '').toLowerCase()])
+          : null;
+        const rawCover = st.imageUrl || storedCover;
+        const resolvedCover = rawCover ? getMediaUrl(rawCover) : fallbackCover;
+
         return {
           id: String(st.id),
+          uniqueKey: `custom-${st.id}`,
           slug: String(st.name).toLowerCase(),
           name: formatTitle(st),
           category: cat,
@@ -272,15 +338,23 @@ export function TopicDirectoryPage({ onNavigate }) {
           badgeBg: '#FFE4E6',
           badgeColor: '#BE123C',
           icon: st.icon || '✨',
-          image: getTopicCover(st.parentTopic),
-          count: st.commentCount || 1,
+          image: resolvedCover,
+          fallbackImage: fallbackCover,
+          count: realCount,
+          score: realScore,
           isCustom: true,
           createdByUsername: st.createdByUsername || '@anonymous',
         };
       });
 
-    return [...canonical, ...custom];
-  }, [serverTopics, topicCounts]);
+    const canonicalWithKeys = canonical.map((c) => ({
+      ...c,
+      uniqueKey: `canonical-${String(c.id).toLowerCase()}`,
+      fallbackImage: c.image,
+    }));
+
+    return [...canonicalWithKeys, ...custom];
+  }, [serverTopics, getTopicCount, getTopicScore]);
 
   // Filter topics by Category and Search Query
   const filteredTopics = useMemo(() => {
@@ -339,12 +413,138 @@ export function TopicDirectoryPage({ onNavigate }) {
     return result;
   }, [allTopics, activeCategory, searchQuery]);
 
+  // 3. Sort Order: popular | trending | suggested | default
+  const sortedTopics = useMemo(() => {
+    const list = [...filteredTopics];
+    if (sortParam === 'popular') {
+      return list.sort((a, b) => {
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    if (sortParam === 'trending') {
+      return list.sort((a, b) => {
+        const scoreDiff = (b.score || 0) - (a.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    if (sortParam === 'suggested') {
+      const userTopicsSet = new Set((topicStats?.userParticipatedTopics || []).map((t) => String(t).toUpperCase()));
+      return list.sort((a, b) => {
+        const aPart = userTopicsSet.has(String(a.id || '').toUpperCase()) || userTopicsSet.has(String(a.name || '').toUpperCase().replace(/[\s&]+/g, '_'));
+        const bPart = userTopicsSet.has(String(b.id || '').toUpperCase()) || userTopicsSet.has(String(b.name || '').toUpperCase().replace(/[\s&]+/g, '_'));
+        if (aPart !== bPart) {
+          return aPart ? 1 : -1;
+        }
+        const scoreDiff = (b.score || 0) - (a.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      });
+    }
+    return list;
+  }, [filteredTopics, sortParam, topicStats]);
+
+  // Derived real sidebar lists
+  const sidebarTrendingTopics = useMemo(() => {
+    return [...allTopics]
+      .sort((a, b) => {
+        const scoreDiff = (b.score || 0) - (a.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 5)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        icon: t.icon || '🔥',
+        badgeBg: t.badgeBg || '#FFE4E6',
+        count: t.count || 0,
+        score: t.score || 0,
+      }));
+  }, [allTopics]);
+
+  const sidebarSuggestedTopics = useMemo(() => {
+    const userTopicsSet = new Set((topicStats?.userParticipatedTopics || []).map((t) => String(t).toUpperCase()));
+    const isGuest = !userTopicsSet || userTopicsSet.size === 0;
+
+    let candidates = allTopics;
+    if (!isGuest) {
+      candidates = allTopics.filter((t) => {
+        const uId = String(t.id || '').toUpperCase();
+        const uName = String(t.name || '').toUpperCase().replace(/[\s&]+/g, '_');
+        return !userTopicsSet.has(uId) && !userTopicsSet.has(uName);
+      });
+    }
+
+    const sorted = [...candidates].sort((a, b) => {
+      const scoreDiff = (b.score || 0) - (a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      const countDiff = (b.count || 0) - (a.count || 0);
+      if (countDiff !== 0) return countDiff;
+      return a.name.localeCompare(b.name);
+    });
+
+    let result = sorted.slice(0, 6);
+    if (result.length < 6) {
+      const existingIds = new Set(result.map((r) => r.id));
+      const remaining = [...allTopics]
+        .filter((t) => !existingIds.has(t.id))
+        .sort((a, b) => (b.count || 0) - (a.count || 0));
+      result = [...result, ...remaining.slice(0, 6 - result.length)];
+    }
+
+    return result.map((t) => ({
+      id: t.id,
+      name: t.name,
+      image: t.image,
+      icon: t.icon,
+      count: t.count || 0,
+    }));
+  }, [allTopics, topicStats]);
+
+  const headingText = useMemo(() => {
+    if (sortParam === 'popular') {
+      return {
+        title: t('explore.popularTopics', 'Popular Topics'),
+        subtitle: t('explore.popularTopicsSubtitle', 'Browse the most active and popular community topics.'),
+        breadcrumb: t('explore.popularTopics', 'Popular Topics'),
+      };
+    }
+    if (sortParam === 'trending') {
+      return {
+        title: t('explore.trendingTopics', 'Trending Topics'),
+        subtitle: t('explore.trendingTopicsSubtitle', 'Browse topics with the highest recent activity and conversations.'),
+        breadcrumb: t('explore.trendingTopics', 'Trending Topics'),
+      };
+    }
+    if (sortParam === 'suggested') {
+      return {
+        title: t('explore.suggestedTopics', 'Suggested for You'),
+        subtitle: t('explore.suggestedTopicsSubtitle', 'Discover new topics and conversations curated for you.'),
+        breadcrumb: t('explore.suggestedTopics', 'Suggested for You'),
+      };
+    }
+    return {
+      title: t('explore.topicDirectory', 'Topic Directory'),
+      subtitle: t('explore.topicDirectorySubtitle', 'Browse and discover all community topics and discussions.'),
+      breadcrumb: t('explore.topicDirectory', 'Topic Directory'),
+    };
+  }, [sortParam, t]);
+
   // Pagination logic
-  const totalPages = Math.max(1, Math.ceil(filteredTopics.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(sortedTopics.length / ITEMS_PER_PAGE));
   const paginatedTopics = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredTopics.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredTopics, currentPage]);
+    return sortedTopics.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedTopics, currentPage]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -390,7 +590,7 @@ export function TopicDirectoryPage({ onNavigate }) {
                 Explore
               </span>
               <span className="breadcrumb-separator">/</span>
-              <span className="breadcrumb-current">Topic Directory</span>
+              <span className="breadcrumb-current">{headingText.breadcrumb}</span>
             </div>
 
             <div className="explore-header-title-row">
@@ -411,11 +611,11 @@ export function TopicDirectoryPage({ onNavigate }) {
                     <Compass size={20} />
                   </span>
                   <h1 className="explore-page-title" style={{ margin: 0 }}>
-                    Topic Directory
+                    {headingText.title}
                   </h1>
                 </div>
                 <p className="explore-page-subtitle" style={{ marginTop: 4 }}>
-                  Browse and discover all community topics and discussions.
+                  {headingText.subtitle}
                 </p>
               </div>
 
@@ -640,7 +840,8 @@ export function TopicDirectoryPage({ onNavigate }) {
             >
               {paginatedTopics.map((topic) => (
                 <div
-                  key={topic.id || topic.name}
+                  key={topic.uniqueKey || (topic.isCustom ? `custom-${topic.id}` : `canonical-${topic.id}`)}
+                  className="topic-card"
                   onClick={() =>
                     onNavigate
                       ? onNavigate(`/topic/${topic.id}`)
@@ -673,8 +874,15 @@ export function TopicDirectoryPage({ onNavigate }) {
                   {/* Card Image Header */}
                   <div style={{ position: 'relative', width: '100%', height: 120 }}>
                     <img
-                      src={topic.image}
+                      src={getMediaUrl(topic.image)}
                       alt={topic.name}
+                      onError={(e) => {
+                        const fb = topic.fallbackImage || getTopicCover(topic.parentTopic);
+                        if (fb && e.currentTarget.src !== fb) {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = fb;
+                        }
+                      }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                     <div
@@ -750,7 +958,9 @@ export function TopicDirectoryPage({ onNavigate }) {
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <MessageCircle size={13} style={{ color: '#E11D48' }} />
-                        <span>{topic.count} discussions</span>
+                        <span>
+                          {topic.count} {topic.count === 1 ? t('explore.discussionSingular', 'discussion') : t('explore.discussionPlural', 'discussions')}
+                        </span>
                       </span>
 
                       {topic.createdByUsername && (
@@ -846,19 +1056,8 @@ export function TopicDirectoryPage({ onNavigate }) {
 
         {/* Column 3: Right Sidebar */}
         <ExploreRightSidebar
-          trendingTopics={[
-            { id: 'LOVE', name: 'Love', icon: '❤️', badgeBg: '#FFE4E6', count: 12400 },
-            { id: 'LIFE_WORK', name: 'Life & Work', icon: '💼', badgeBg: '#E0F2FE', count: 9800 },
-            { id: 'MENTAL_HEALTH', name: 'Mental Health', icon: '🌿', badgeBg: '#DCFCE7', count: 8100 },
-            { id: 'FAMILY', name: 'Family', icon: '🏠', badgeBg: '#FFEDD5', count: 7900 },
-            { id: 'PERSONAL_GROWTH', name: 'Personal Growth', icon: '📈', badgeBg: '#FFE4E6', count: 6600 },
-          ]}
-          suggestedTopics={[
-            { id: 'ANXIETY', name: 'Anxiety and Overthinking', image: topicMentalHealth, count: 8200 },
-            { id: 'CAREER', name: 'Career & Jobs', image: topicLifeWork, count: 4200 },
-            { id: 'SELF_LOVE', name: 'Self-Love', image: topicRelationships, count: 5200 },
-            { id: 'HEALTH', name: 'Health & Fitness', image: topicMotivation, count: 3800 },
-          ]}
+          trendingTopics={sidebarTrendingTopics}
+          suggestedTopics={sidebarSuggestedTopics}
           onSelectTopic={(topicId) => {
             onNavigate ? onNavigate(`/topic/${topicId.toLowerCase()}`) : (window.location.href = `/topic/${topicId.toLowerCase()}`);
           }}

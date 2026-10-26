@@ -15,6 +15,7 @@ import { usePosts } from '../../context/PostContext.jsx';
 import { useReports } from '../../context/ReportContext.jsx';
 import { useLanguage } from '../../context/LanguageContext.jsx';
 import { apiTopicService } from '../../services/apiTopicService.js';
+import { getMediaUrl } from '../../config/env.js';
 
 // Image assets for popular topic cards (Approved High-Res Photography Assets)
 import topicLove from '../../assets/explore/topic-love.jpg';
@@ -37,21 +38,33 @@ export function ExplorePage({ onNavigate }) {
   const [activeFilter, setActiveFilter] = useState('trending');
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [serverTopics, setServerTopics] = useState([]);
+  const [topicStats, setTopicStats] = useState({ counts: {}, scores: {}, userParticipatedTopics: [] });
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [topicsError, setTopicsError] = useState(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
-  // Fetch verified topics from backend API and listen for dynamic creation
+  // Fetch verified topics and real database stats from backend API
   const loadServerTopics = useCallback(() => {
-    apiTopicService
-      .getTopics()
-      .then((items) => {
-        if (Array.isArray(items)) {
-          setServerTopics(items);
-        }
+    setTopicsLoading(true);
+    setTopicsError(null);
+    Promise.all([
+      apiTopicService.getTopics(),
+      apiTopicService.getTopicStats().catch(() => ({ counts: {}, scores: {}, userParticipatedTopics: [] })),
+    ])
+      .then(([items, stats]) => {
+        setServerTopics(Array.isArray(items) ? items : []);
+        if (stats) setTopicStats(stats);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[ExplorePage] load server topics error:', err);
+        setTopicsError('Failed to load topics.');
+      })
+      .finally(() => {
+        setTopicsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -121,86 +134,127 @@ export function ExplorePage({ onNavigate }) {
     return counts;
   }, [posts]);
 
-  // All Curated Popular Topics + Real Database Topics matching approved design reference
-  const popularTopics = useMemo(() => {
+  // Discussion counts and recent activity scores from backend database
+  const getTopicCount = useCallback((topicId, topicName, parentTopic) => {
+    const counts = topicStats?.counts || {};
+    const uId = String(topicId || '').toUpperCase();
+    const uName = String(topicName || '').toUpperCase().replace(/[\s&]+/g, '_');
+    const uParent = String(parentTopic || '').toUpperCase();
+
+    if (counts[uId] !== undefined) return counts[uId];
+    if (counts[uName] !== undefined) return counts[uName];
+    if (uParent && counts[uParent] !== undefined) return counts[uParent];
+    if (topicCounts[uId] !== undefined) return topicCounts[uId];
+    return 0;
+  }, [topicStats, topicCounts]);
+
+  const getTopicScore = useCallback((topicId, topicName, parentTopic) => {
+    const scores = topicStats?.scores || {};
+    const uId = String(topicId || '').toUpperCase();
+    const uName = String(topicName || '').toUpperCase().replace(/[\s&]+/g, '_');
+    const uParent = String(parentTopic || '').toUpperCase();
+
+    if (scores[uId] !== undefined) return scores[uId];
+    if (scores[uName] !== undefined) return scores[uName];
+    if (uParent && scores[uParent] !== undefined) return scores[uParent];
+    return 0;
+  }, [topicStats]);
+
+  // All Curated Canonical Topics + Real Server Topics
+  const allTopicsList = useMemo(() => {
     const rawList = [
       {
         id: 'LOVE',
         name: 'Love',
         category: 'Relationships',
+        parentTopic: 'FEELINGS',
         badgeBg: '#FFE4E6',
         icon: '❤️',
         image: topicLove,
-        count: topicCounts['LOVE'] || topicCounts['FEELINGS'] || 12400,
+        count: getTopicCount('LOVE', 'Love', 'FEELINGS'),
+        score: getTopicScore('LOVE', 'Love', 'FEELINGS'),
       },
       {
         id: 'LIFE_WORK',
         name: 'Life & Work',
         category: 'Life & Work',
+        parentTopic: 'LIFE_WORK',
         badgeBg: '#E0F2FE',
         icon: '💼',
         image: topicLifeWork,
-        count: topicCounts['LIFE_WORK'] || topicCounts['WORK'] || topicCounts['CAREER'] || topicCounts['JOB'] || 9800,
+        count: getTopicCount('LIFE_WORK', 'Life & Work', 'LIFE_WORK'),
+        score: getTopicScore('LIFE_WORK', 'Life & Work', 'LIFE_WORK'),
       },
       {
         id: 'MENTAL_HEALTH',
         name: 'Mental Health',
         category: 'Mental Health',
+        parentTopic: 'FEELINGS',
         badgeBg: '#DCFCE7',
         icon: '🌿',
         image: topicMentalHealth,
-        count: topicCounts['MENTAL_HEALTH'] || 8100,
+        count: getTopicCount('MENTAL_HEALTH', 'Mental Health', 'FEELINGS'),
+        score: getTopicScore('MENTAL_HEALTH', 'Mental Health', 'FEELINGS'),
       },
       {
         id: 'FAMILY',
         name: 'Family',
         category: 'Family',
+        parentTopic: 'PARENTING',
         badgeBg: '#FFEDD5',
         icon: '🏠',
         image: topicFamily,
-        count: topicCounts['FAMILY'] || 7900,
+        count: getTopicCount('FAMILY', 'Family', 'PARENTING'),
+        score: getTopicScore('FAMILY', 'Family', 'PARENTING'),
       },
       {
         id: 'PERSONAL_GROWTH',
         name: 'Personal Growth',
         category: 'Personal Growth',
+        parentTopic: 'EXPRESSION',
         badgeBg: '#FFE4E6',
         icon: '📈',
         image: topicMotivation,
-        count: topicCounts['PERSONAL_GROWTH'] || topicCounts['MOTIVATION'] || 6600,
+        count: getTopicCount('PERSONAL_GROWTH', 'Personal Growth', 'EXPRESSION'),
+        score: getTopicScore('PERSONAL_GROWTH', 'Personal Growth', 'EXPRESSION'),
       },
       {
         id: 'EDUCATION',
         name: 'Education',
         category: 'Education',
+        parentTopic: 'EDUCATION',
         badgeBg: '#E0F2FE',
         icon: '📖',
         image: topicEducation,
-        count: topicCounts['EDUCATION'] || topicCounts['COLLEGE'] || topicCounts['STUDENT'] || 6800,
+        count: getTopicCount('EDUCATION', 'Education', 'EDUCATION'),
+        score: getTopicScore('EDUCATION', 'Education', 'EDUCATION'),
       },
       {
         id: 'RELATIONSHIPS',
         name: 'Relationships',
         category: 'Relationships',
+        parentTopic: 'RELATIONSHIPS',
         badgeBg: '#FFE4E6',
         icon: '❤️',
         image: topicRelationships,
-        count: topicCounts['RELATIONSHIPS'] || topicCounts['RELATION'] || 11200,
+        count: getTopicCount('RELATIONSHIPS', 'Relationships', 'RELATIONSHIPS'),
+        score: getTopicScore('RELATIONSHIPS', 'Relationships', 'RELATIONSHIPS'),
       },
       {
         id: 'FRIENDSHIP',
         name: 'Friendship',
         category: 'Relationships',
+        parentTopic: 'FEELINGS',
         badgeBg: '#FEF3C7',
         icon: '🤝',
         image: topicFriendship,
-        count: topicCounts['FRIENDSHIP'] || topicCounts['FRIEND'] || 5400,
+        count: getTopicCount('FRIENDSHIP', 'Friendship', 'FEELINGS'),
+        score: getTopicScore('FRIENDSHIP', 'Friendship', 'FEELINGS'),
       },
     ];
 
     const canonicalIds = new Set(rawList.map((t) => t.id.toUpperCase()));
 
-    // Map parentTopic enum to clean category
     const mapParentToCategory = (parent) => {
       switch (parent) {
         case 'FEELINGS':
@@ -255,7 +309,6 @@ export function ExplorePage({ onNavigate }) {
       return raw.replace(/_/g, ' ');
     };
 
-    // Integrate real custom topics from backend
     const customList = (serverTopics || [])
       .filter((st) => {
         const sName = String(st.name || '').toUpperCase().trim();
@@ -263,28 +316,51 @@ export function ExplorePage({ onNavigate }) {
       })
       .map((st) => {
         const cat = mapParentToCategory(st.parentTopic);
+        const sName = String(st.name || '').toUpperCase().trim();
+        const realCount = getTopicCount(sName, st.label || st.name, st.parentTopic) || 0;
+        const realScore = getTopicScore(sName, st.label || st.name, st.parentTopic);
+        const fallbackCover = getTopicCover(st.parentTopic);
+        const storedCover = typeof window !== 'undefined'
+          ? (JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.id)] ||
+             JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.name).toLowerCase()] ||
+             JSON.parse(localStorage.getItem('mka_topic_covers') || '{}')[String(st.label || '').toLowerCase()])
+          : null;
+        const rawCover = st.imageUrl || storedCover;
+        const resolvedCover = rawCover ? getMediaUrl(rawCover) : fallbackCover;
+
         return {
           id: String(st.id),
+          uniqueKey: `custom-${st.id}`,
           slug: String(st.name).toLowerCase(),
           name: formatTitle(st),
           category: cat,
           badgeBg: '#FFE4E6',
           icon: st.icon || '✨',
-          image: getTopicCover(st.parentTopic),
-          count: st.commentCount || 1,
+          image: resolvedCover,
+          fallbackImage: fallbackCover,
+          count: realCount,
+          score: realScore,
           isCustom: true,
           parentTopic: st.parentTopic,
           createdByUsername: st.createdByUsername,
         };
       });
 
-    const combined = [...rawList, ...customList];
+    const canonicalWithKeys = rawList.map((t) => ({
+      ...t,
+      uniqueKey: `canonical-${String(t.id).toLowerCase()}`,
+      fallbackImage: t.image,
+    }));
 
-    // Filter by active category if not 'All'
-    let filtered = combined;
+    return [...canonicalWithKeys, ...customList];
+  }, [serverTopics, getTopicCount, getTopicScore]);
+
+  // Filtered carousel topics
+  const popularTopics = useMemo(() => {
+    let filtered = allTopicsList;
     if (activeCategory !== 'All') {
       const cat = activeCategory.toUpperCase();
-      filtered = combined.filter((item) => {
+      filtered = allTopicsList.filter((item) => {
         if (cat === 'RELATIONSHIPS') {
           return item.category === 'Relationships' || item.id === 'LOVE' || item.id === 'RELATIONSHIPS' || item.id === 'FRIENDSHIP';
         }
@@ -313,7 +389,6 @@ export function ExplorePage({ onNavigate }) {
       });
     }
 
-    // Filter by search query if active
     if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const qNorm = q.replace(/[^a-z0-9]/g, '');
@@ -327,32 +402,69 @@ export function ExplorePage({ onNavigate }) {
       if (searchMatched.length > 0) return searchMatched;
     }
 
-    return filtered.length > 0 ? filtered : combined;
-  }, [topicCounts, activeCategory, searchQuery, serverTopics]);
+    return filtered.length > 0 ? filtered : allTopicsList;
+  }, [allTopicsList, activeCategory, searchQuery]);
 
-
-  // Trending Topics for Right Sidebar (Top 5 ranked matching approved reference)
+  // Trending Topics for Right Sidebar: Derived from real 7-day activity score + discussion count
   const sidebarTrendingTopics = useMemo(() => {
-    return [
-      { id: 'LOVE', name: 'Love', icon: '❤️', badgeBg: '#FFE4E6', count: topicCounts['LOVE'] || topicCounts['FEELINGS'] || 12400 },
-      { id: 'LIFE_WORK', name: 'Life & Work', icon: '💼', badgeBg: '#E0F2FE', count: topicCounts['LIFE_WORK'] || topicCounts['WORK'] || topicCounts['CAREER'] || 9800 },
-      { id: 'MENTAL_HEALTH', name: 'Mental Health', icon: '🌿', badgeBg: '#DCFCE7', count: topicCounts['MENTAL_HEALTH'] || 8100 },
-      { id: 'FAMILY', name: 'Family', icon: '🏠', badgeBg: '#FFEDD5', count: topicCounts['FAMILY'] || 7900 },
-      { id: 'PERSONAL_GROWTH', name: 'Personal Growth', icon: '📈', badgeBg: '#FFE4E6', count: topicCounts['PERSONAL_GROWTH'] || topicCounts['MOTIVATION'] || 6600 },
-    ];
-  }, [topicCounts]);
+    return [...allTopicsList]
+      .sort((a, b) => {
+        const scoreDiff = (b.score || 0) - (a.score || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        const countDiff = (b.count || 0) - (a.count || 0);
+        if (countDiff !== 0) return countDiff;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 5)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        icon: t.icon || '🔥',
+        badgeBg: t.badgeBg || '#FFE4E6',
+        count: t.count || 0,
+        score: t.score || 0,
+      }));
+  }, [allTopicsList]);
 
-  // Suggested Topics for Right Sidebar with photographic thumbnails matching approved reference
+  // Suggested Topics for Right Sidebar: Topics logged-in user hasn't posted/commented in, falling back to popular for guests
   const sidebarSuggestedTopics = useMemo(() => {
-    return [
-      { id: 'ANXIETY', name: 'Anxiety and Overthinking', image: topicMentalHealth, count: 8200 },
-      { id: 'CAREER', name: 'Career & Jobs', image: topicLifeWork, count: 4200 },
-      { id: 'SELF_LOVE', name: 'Self-Love', image: topicRelationships, count: 5200 },
-      { id: 'HEALTH', name: 'Health & Fitness', image: topicMotivation, count: 3800 },
-      { id: 'TRAVEL', name: 'Travel', image: topicFamily, count: 3100 },
-      { id: 'SPIRITUALITY', name: 'Spirituality', image: topicMentalHealth, count: 4300 },
-    ];
-  }, []);
+    const userTopicsSet = new Set((topicStats?.userParticipatedTopics || []).map((t) => String(t).toUpperCase()));
+    const isGuest = !userTopicsSet || userTopicsSet.size === 0;
+
+    let candidates = allTopicsList;
+    if (!isGuest) {
+      candidates = allTopicsList.filter((t) => {
+        const uId = String(t.id || '').toUpperCase();
+        const uName = String(t.name || '').toUpperCase().replace(/[\s&]+/g, '_');
+        return !userTopicsSet.has(uId) && !userTopicsSet.has(uName);
+      });
+    }
+
+    const sorted = [...candidates].sort((a, b) => {
+      const scoreDiff = (b.score || 0) - (a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      const countDiff = (b.count || 0) - (a.count || 0);
+      if (countDiff !== 0) return countDiff;
+      return a.name.localeCompare(b.name);
+    });
+
+    let result = sorted.slice(0, 6);
+    if (result.length < 6) {
+      const existingIds = new Set(result.map((r) => r.id));
+      const remaining = [...allTopicsList]
+        .filter((t) => !existingIds.has(t.id))
+        .sort((a, b) => (b.count || 0) - (a.count || 0));
+      result = [...result, ...remaining.slice(0, 6 - result.length)];
+    }
+
+    return result.map((t) => ({
+      id: t.id,
+      name: t.name,
+      image: t.image,
+      icon: t.icon,
+      count: t.count || 0,
+    }));
+  }, [allTopicsList, topicStats]);
 
   // Filter & Sort Posts
   const filteredDiscussions = useMemo(() => {
@@ -577,11 +689,50 @@ export function ExplorePage({ onNavigate }) {
           />
 
           {/* 4. Popular Topics Horizontal Carousel */}
-          <PopularTopicsCarousel
-            topics={popularTopics}
-            onSelectTopic={handleSelectTopicFromCard}
-            onViewAll={() => (onNavigate ? onNavigate('/topics') : (window.location.href = '/topics'))}
-          />
+          {topicsError ? (
+            <div
+              style={{
+                background: '#FFFFFF',
+                borderRadius: '18px',
+                border: '1px solid var(--border-light, #CEC7C5)',
+                padding: '30px 20px',
+                textAlign: 'center',
+                margin: '16px 0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 10,
+              }}
+              data-testid="topics-error-card"
+            >
+              <span style={{ fontSize: 24 }}>⚠️</span>
+              <p style={{ margin: 0, color: '#0F172A', fontWeight: 600 }}>
+                Failed to load topics.
+              </p>
+              <button
+                type="button"
+                onClick={loadServerTopics}
+                style={{
+                  background: '#E11D48',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '7px 16px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <PopularTopicsCarousel
+              topics={popularTopics}
+              onSelectTopic={handleSelectTopicFromCard}
+              onViewAll={() => (onNavigate ? onNavigate('/topics?sort=popular') : (window.location.href = '/topics?sort=popular'))}
+            />
+          )}
 
           {/* 5. Trending Discussions Feed */}
           <section className="trending-discussions-section" aria-label="Trending Discussions">
@@ -638,7 +789,7 @@ export function ExplorePage({ onNavigate }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {filteredDiscussions.map((post) => (
                   <TrendingDiscussionCard
-                    key={post.id}
+                    key={post.feedItemId || post.postId || post.id}
                     post={post}
                     onNavigate={onNavigate}
                   />

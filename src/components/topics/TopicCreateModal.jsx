@@ -447,8 +447,11 @@ export function TopicCreateModal({ isOpen, onClose, onCreated }) {
     try {
       const payload = {
         name: trimmedName,
+        label: trimmedName,
         parentTopic: selectedCategory.backendParentTopic,
         icon: selectedCategory.emoji,
+        description: trimmedDesc || null,
+        imageUrl: serverImageUrl || null,
         createdByUsername: currentUser?.username || '@anonymous',
       };
 
@@ -459,7 +462,7 @@ export function TopicCreateModal({ isOpen, onClose, onCreated }) {
       }
 
       const topicId = createdTopic.id || createdTopic.name;
-      const coverToStore = serverImageUrl || imagePreview || null;
+      const coverToStore = createdTopic.imageUrl || serverImageUrl || imagePreview || null;
 
       if (coverToStore) {
         try {
@@ -480,6 +483,7 @@ export function TopicCreateModal({ isOpen, onClose, onCreated }) {
         name: createdTopic.label || createdTopic.name || trimmedName,
         parentTopic: createdTopic.parentTopic || selectedCategory.backendParentTopic,
         icon: createdTopic.icon || selectedCategory.emoji,
+        description: createdTopic.description || trimmedDesc || null,
         createdByUsername: createdTopic.createdByUsername || currentUser?.username || '@anonymous',
         createdAt: createdTopic.createdAt || new Date().toISOString(),
         imageUrl: coverToStore,
@@ -489,17 +493,6 @@ export function TopicCreateModal({ isOpen, onClose, onCreated }) {
         saveCustomTopic(trimmedName, selectedCategory.emoji, currentUser?.username);
       } catch {
         // safe ignore
-      }
-
-      try {
-        await apiCommentService.createTopicComment(
-          topicId,
-          trimmedDesc,
-          getLanguageCode(currentLanguage),
-          serverImageUrl || imagePreview || null
-        );
-      } catch (commentErr) {
-        console.warn('[TopicCreateModal] Initial comment creation notice:', commentErr?.message || commentErr);
       }
 
       addToast(getUiText('topicCreatedSuccess', 'Topic created successfully!'), 'success');

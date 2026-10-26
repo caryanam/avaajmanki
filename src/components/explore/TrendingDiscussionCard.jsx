@@ -257,8 +257,14 @@ export function TrendingDiscussionCard({ post, onNavigate }) {
                 src={finalMediaUrl}
                 alt="Discussion thumbnail"
                 className="discussion-media-img"
-                loading="lazy"
-                onError={() => setImageFailed(true)}
+                onError={(e) => {
+                  setImageFailed(true);
+                  const fallback = getTopicFallbackImage(rawTopic);
+                  if (fallback && e.currentTarget.src !== fallback) {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = fallback;
+                  }
+                }}
               />
             </div>
           )}

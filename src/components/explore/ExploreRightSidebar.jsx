@@ -2,6 +2,7 @@ import React from 'react';
 import { 
   Flame, Sparkles, ShieldCheck, ChevronRight, ArrowRight
 } from 'lucide-react';
+import { getMediaUrl } from '../../config/env.js';
 
 export function ExploreRightSidebar({
   trendingTopics = [],
@@ -28,7 +29,7 @@ export function ExploreRightSidebar({
           <button
             type="button"
             className="explore-widget-viewall-btn"
-            onClick={() => onNavigate ? onNavigate('/explore') : (window.location.href = '/explore')}
+            onClick={() => onNavigate ? onNavigate('/topics?sort=trending') : (window.location.href = '/topics?sort=trending')}
           >
             <span>View all</span>
             <span aria-hidden="true">&rarr;</span>
@@ -38,7 +39,7 @@ export function ExploreRightSidebar({
         <div className="explore-trending-list">
           {trendingTopics.slice(0, 5).map((t, idx) => (
             <div
-              key={t.id || t.name}
+              key={t.uniqueKey || (t.isCustom ? `custom-${t.id}` : `canonical-${t.id || t.name}`)}
               className="explore-trending-item"
               onClick={() => onSelectTopic ? onSelectTopic(t.id || t.name) : onNavigate(`/explore?topic=${t.id || t.name}`)}
               role="button"
@@ -82,7 +83,7 @@ export function ExploreRightSidebar({
           <button
             type="button"
             className="explore-widget-viewall-btn"
-            onClick={() => onNavigate ? onNavigate('/explore') : (window.location.href = '/explore')}
+            onClick={() => onNavigate ? onNavigate('/topics?sort=suggested') : (window.location.href = '/topics?sort=suggested')}
           >
             <span>View all</span>
             <span aria-hidden="true">&rarr;</span>
@@ -92,7 +93,7 @@ export function ExploreRightSidebar({
         <div className="explore-suggested-list">
           {suggestedTopics.slice(0, 6).map((s) => (
             <div
-              key={s.id || s.name}
+              key={s.uniqueKey || (s.isCustom ? `custom-${s.id}` : `canonical-${s.id || s.name}`)}
               className="explore-suggested-item"
               onClick={() => onSelectTopic ? onSelectTopic(s.id || s.name) : onNavigate(`/explore?topic=${s.id || s.name}`)}
               role="button"
@@ -101,10 +102,16 @@ export function ExploreRightSidebar({
               <div className="explore-suggested-left">
                 {s.image ? (
                   <img
-                    src={s.image}
+                    src={getMediaUrl(s.image)}
                     alt={s.name}
                     className="explore-suggested-thumb"
                     loading="lazy"
+                    onError={(e) => {
+                      if (s.fallbackImage && e.currentTarget.src !== s.fallbackImage) {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = s.fallbackImage;
+                      }
+                    }}
                   />
                 ) : (
                   <div className="explore-suggested-icon" aria-hidden="true">

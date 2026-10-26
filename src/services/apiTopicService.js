@@ -14,14 +14,24 @@ export const apiTopicService = {
     }
   },
 
-  async getTopics() {
+  async getTopics(params = {}) {
     try {
-      const response = await apiClient.get('/api/topics', { timeout: 10000 });
+      const response = await apiClient.get('/api/topics', { params, timeout: 10000 });
       const data = response.data?.data || response.data || [];
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) ? data : (data.content || []);
     } catch (err) {
-      console.warn('[apiTopicService] getTopics network/DB fallback notice:', err?.message || err);
-      return [];
+      console.error('[apiTopicService] getTopics network/DB error:', err?.message || err);
+      throw err;
+    }
+  },
+
+  async getTopicStats() {
+    try {
+      const response = await apiClient.get('/api/topics/stats', { timeout: 10000 });
+      return response.data?.data || response.data || { counts: {}, scores: {}, userParticipatedTopics: [] };
+    } catch (err) {
+      console.error('[apiTopicService] getTopicStats error:', err?.message || err);
+      throw err;
     }
   },
 
@@ -43,7 +53,10 @@ export const apiTopicService = {
     try {
       const payload = {
         name: topicData.name || topicData.topicName,
+        label: topicData.label || topicData.name || topicData.topicName,
         icon: topicData.icon || '💡',
+        description: topicData.description || null,
+        imageUrl: topicData.imageUrl || null,
         createdByUsername: topicData.createdByUsername || '@anonymous',
         parentTopic: topicData.parentTopic || 'GENERAL',
       };
@@ -85,4 +98,3 @@ export const apiTopicService = {
     }
   },
 };
-

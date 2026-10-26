@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext.jsx';
+import { apiTopicService } from '../../services/apiTopicService.js';
 import topicMentalHealth from '../../assets/home/topic-mental-health.jpg';
 import topicPersonalGrowth from '../../assets/home/topic-personal-growth.jpg';
 import topicFriendship from '../../assets/home/topic-friendship.jpg';
@@ -8,6 +9,31 @@ import topicEducation from '../../assets/home/topic-education.jpg';
 
 export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
   const { t } = useLanguage();
+  const [counts, setCounts] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    apiTopicService.getTopicStats()
+      .then((data) => {
+        if (mounted && data?.counts) {
+          setCounts(data.counts);
+        }
+      })
+      .catch((err) => {
+        console.warn('[ExploreTopicsWidget] failed to fetch topic stats:', err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const formatCount = (raw) => {
+    const num = Number(raw) || 0;
+    if (num >= 1000) {
+      return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return String(num);
+  };
 
   const exploreTopics = [
     {
@@ -15,7 +41,6 @@ export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
       name: 'Mental Health',
       nameKey: 'topic.subtopicMentalHealth',
       descKey: 'topic.descMentalHealth',
-      countNum: '5.2K',
       description: 'Support, share and spread positivity.',
       thumb: topicMentalHealth,
     },
@@ -24,7 +49,6 @@ export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
       name: 'Personal Growth',
       nameKey: 'topic.subtopicPersonalGrowth',
       descKey: 'topic.descPersonalGrowth',
-      countNum: '4.8K',
       description: 'Small steps. Big changes.',
       thumb: topicPersonalGrowth,
     },
@@ -33,7 +57,6 @@ export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
       name: 'Friendship',
       nameKey: 'topic.subtopicFriendship',
       descKey: 'topic.descFriendship',
-      countNum: '4.1K',
       description: 'Because real friends matter.',
       thumb: topicFriendship,
     },
@@ -42,7 +65,6 @@ export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
       name: 'Education',
       nameKey: 'topic.subtopicEducation',
       descKey: 'topic.descEducation',
-      countNum: '3.6K',
       description: 'Learning never stops.',
       thumb: topicEducation,
     },
@@ -75,7 +97,11 @@ export function ExploreTopicsWidget({ onSelectTopic, onNavigate }) {
         {exploreTopics.map((item) => {
           const displayName = t(item.nameKey, item.name);
           const descText = t(item.descKey, item.description);
-          const countText = t('topic.discussionsCountShort', '{{count}} discussions', { count: item.countNum });
+          const rawNum = counts[item.id] ?? counts[item.name.toUpperCase()] ?? 0;
+          const countNum = formatCount(rawNum);
+          const countText = rawNum === 1
+            ? `${countNum} ${t('explore.discussionSingular', 'discussion')}`
+            : `${countNum} ${t('explore.discussionPlural', 'discussions')}`;
 
           return (
             <div

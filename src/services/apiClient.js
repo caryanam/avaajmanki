@@ -26,10 +26,17 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Handle 401 Unauthorized safely without breaking active login flow on public pages
+// Response Interceptor: Handle 401 Unauthorized safely without breaking active login flow on public pages, and 429 Rate Limiting
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers && error.response.headers['retry-after'];
+      const serverMsg = error.response.data?.message;
+      const message = serverMsg || (retryAfter ? `Too many requests. Please wait ${retryAfter} seconds.` : 'Too many requests. Please slow down.');
+      window.dispatchEvent(new CustomEvent('mka:toast', { detail: { message, type: 'error' } }));
+    }
+
     if (error.response && error.response.status === 401) {
       const publicPaths = ['/', '', '/home', '/explore', '/index.html', '/about', '/privacy-policy', '/community-guidelines', '/child-safety', '/child-safety-standards', '/contact', '/faq', '/delete-account', '/login', '/admin/login', '/register', '/forgot-password'];
       const currentPath = window.location.pathname.split('?')[0].replace(/\/+$/, '') || '/';

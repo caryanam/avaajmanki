@@ -214,6 +214,24 @@ export function AppRoutes() {
   if (normalizedPath === '/home') {
     return <HomePage onNavigate={navigate} />;
   }
+  if (normalizedPath === '/explore/popular') {
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState({}, '', '/topics?sort=popular');
+    }
+    return <TopicDirectoryPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/explore/trending') {
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState({}, '', '/topics?sort=trending');
+    }
+    return <TopicDirectoryPage onNavigate={navigate} />;
+  }
+  if (normalizedPath === '/explore/suggested') {
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState({}, '', '/topics?sort=suggested');
+    }
+    return <TopicDirectoryPage onNavigate={navigate} />;
+  }
   if (normalizedPath === '/topics' || normalizedPath === '/explore/topics') {
     return <TopicDirectoryPage onNavigate={navigate} />;
   }

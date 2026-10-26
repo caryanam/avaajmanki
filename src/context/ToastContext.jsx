@@ -24,6 +24,16 @@ export function ToastProvider({ children }) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
+  React.useEffect(() => {
+    const handleCustomToast = (e) => {
+      if (e.detail?.message) {
+        addToast(e.detail.message, e.detail.type || 'error', e.detail.duration || 4000);
+      }
+    };
+    window.addEventListener('mka:toast', handleCustomToast);
+    return () => window.removeEventListener('mka:toast', handleCustomToast);
+  }, [addToast]);
+
   return (
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
