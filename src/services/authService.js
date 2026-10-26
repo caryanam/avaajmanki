@@ -59,7 +59,7 @@ export const authService = {
           throw new Error('Admin authentication requires the backend server. Please try again when it is available.');
         }
         console.warn('Backend server offline or timed out. Falling back to mock auth.');
-        const mockUser = mockAuthService.login(emailOrMobile, password);
+        const mockUser = mockAuthService.login(cleanIdentifier, password);
         return { user: mockUser, hasProfile: true };
       }
       throw err;
